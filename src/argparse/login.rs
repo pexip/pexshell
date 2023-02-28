@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use lib::error;
-use std::{fmt::Display, path::Path};
+use std::fmt::Display;
 
 pub struct Login;
 
@@ -46,11 +46,10 @@ impl Login {
             )
     }
 
-    pub async fn run<'a>(
+    pub async fn run<'a, 'b>(
         &self,
         pexshell: &mut PexShell<'a>,
-        config: &mut ConfigManager,
-        config_file: &Path,
+        config: &mut ConfigManager<'b>,
         client: reqwest::Client,
         login_sub: &ArgMatches,
     ) -> Result<(), error::UserFriendly> {
@@ -59,7 +58,7 @@ impl Login {
             login.list_users(&mut pexshell.console, config);
         } else if login_sub.get_flag("delete") {
             login.delete_user(config)?;
-            config.write_to_file(config_file)?;
+            config.write_to_file()?;
         } else {
             let user = login
                 .select_user(
@@ -71,7 +70,7 @@ impl Login {
                 .await?;
 
             config.set_current_user(&user);
-            config.write_to_file(config_file)?;
+            config.write_to_file()?;
         };
         Ok(())
     }

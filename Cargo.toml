@@ -29,6 +29,7 @@ colored_json = "3.0.1"
 console = "0.15.5" # colour stderr logging
 dialoguer = { version = "0.10.1", features = ["fuzzy-select"] }
 directories = "4.0.1"
+fd-lock = "3.0.10"
 futures = { version = "0.3.21", features = ["executor"] }
 git-version = "0.3.5"
 is-terminal = "0.4.3" # for determining if stdout is a terminal (interactive)
@@ -45,10 +46,12 @@ parking_lot = "0.12.1"
 reqwest = { version = "0.11.11", default-features = false, features = ["json"] }
 serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
-simple-signal = "1.1.1"
 tokio = { version = "1.19.2", features = ["macros", "io-std"] }
 toml = "0.7.2"
 version = "3.0.0"
+
+[target.'cfg(unix)'.dependencies]
+simple-signal = "1.1.1"
 
 [dev-dependencies]
 assert-panic = "1.0.1"
