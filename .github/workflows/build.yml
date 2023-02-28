@@ -10,7 +10,8 @@ jobs:
   cargo-build:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust-version: [1.64.0, stable]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -19,6 +20,7 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: cargo-build
+          rust-version: ${{ matrix.rust-version }}
       - name: Install dependencies
         run: cargo install cargo-nextest
       - name: Build
