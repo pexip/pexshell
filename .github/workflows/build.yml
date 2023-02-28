@@ -27,9 +27,19 @@ jobs:
         run: cargo build --workspace --release --locked --verbose
       - name: Test
         run: cargo nextest run --workspace --release --locked
-      - name: Upload build
+      - name: Upload build [-nix]
+        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v3
         with:
-          name: build
+          name: release build ${{ matrix.os }}
           path: target/release/pexshell
           retention-days: 7
+          if-no-files-found: error
+      - name: Upload build [Windows]
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: release build ${{ matrix.os }}
+          path: target/release/pexshell.exe
+          retention-days: 7
+          if-no-files-found: error
