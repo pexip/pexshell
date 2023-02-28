@@ -5,6 +5,7 @@ use crate::{
     LOGGER,
 };
 
+use fd_lock::RwLock;
 use futures::TryStreamExt;
 use is_terminal::IsTerminal;
 use lazy_static::lazy_static;
@@ -20,7 +21,8 @@ use log::{debug, trace, LevelFilter};
 use serde_json::Value;
 use std::{
     collections::HashMap,
-    fs, future,
+    fs::{self, File},
+    future,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -36,19 +38,30 @@ lazy_static! {
     };
 }
 
-fn read_config(
-    config_file: &Path,
+fn read_config<'a>(
+    config_file_path: &Path,
+    file_lock: &'a mut Option<RwLock<File>>,
     env: &HashMap<String, String>,
-) -> Result<ConfigManager, Box<dyn std::error::Error>> {
-    let config_dir = config_file.parent().expect("no parent directory");
+) -> Result<ConfigManager<'a>, Box<dyn std::error::Error>> {
+    let config_dir = config_file_path.parent().expect("no parent directory");
     debug!(
         "Ensuring config directory path is created: {:?}",
         &config_dir
     );
     fs::create_dir_all(config_dir)?;
 
-    let config = ConfigManager::read_from_file(config_file, env.clone())?
-        .unwrap_or_else(|| ConfigManager::with_config(Config::default(), env.clone()));
+    debug!("Reading config from file: {:?}", &config_file_path);
+
+    if !config_file_path.exists() {
+        return Ok(ConfigManager::with_config(
+            Config::default(),
+            config_file_path,
+            file_lock,
+            env.clone(),
+        )?);
+    }
+
+    let config = ConfigManager::read_from_file(config_file_path, file_lock, env.clone())?;
 
     LOGGER.set_log_to_stderr(config.get_log_to_stderr());
 
@@ -113,7 +126,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &ConfigManager,
+        config: &ConfigManager<'_>,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -153,8 +166,10 @@ impl<'a> PexShell<'a> {
 
     pub async fn run(&mut self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Read config file
-        let config_file = &self.config_dir.join("config.toml");
-        let mut config = read_config(config_file, &self.env)?;
+        let config_file = self.config_dir.join("config.toml");
+        // File lock option to store the File Lock to maintain the lifetime
+        let mut file_lock: Option<RwLock<File>> = None;
+        let mut config = read_config(&config_file, &mut file_lock, &self.env)?;
 
         // Read schema from cache directory
         let cache_dir = self.cache_dir.join("schemas");
@@ -196,7 +211,7 @@ impl<'a> PexShell<'a> {
         // login
         if let Some(login_sub) = matches.subcommand_matches(&argparse::Login.to_string()) {
             argparse::Login
-                .run(self, &mut config, config_file, client, login_sub)
+                .run(self, &mut config, client, login_sub)
                 .await?;
             return Ok(());
         } else if config.get_current_user().is_none() && config.get_env_user().is_none() {
@@ -239,6 +254,9 @@ impl<'a> PexShell<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use crate::pexshell::read_config;
     use lib::util::SimpleLogger;
     use log::{Level, Log, Record};
 
@@ -263,5 +281,18 @@ mod tests {
         // Act & Assert
         assert!(logger.enabled(record_1.metadata()));
         assert!(!logger.enabled(record_2.metadata()));
+    }
+
+    #[test]
+    pub fn test_read_from_file_not_found() {
+        // Arrange
+        let config_path = std::env::temp_dir().join("pex_config_file_that_should_not_exist.toml");
+
+        // Act
+        let mut file_lock = None;
+        let _config = read_config(&config_path, &mut file_lock, &HashMap::default()).unwrap();
+
+        // Assert
+        assert!(config_path.exists());
     }
 }
