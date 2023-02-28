@@ -1,7 +1,6 @@
+use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
-use std::time::Instant;
-use std::{collections::HashMap, time::SystemTime};
 use time::format_description;
 
 use crate::{config, consts::EXIT_CODE_INTERRUPTED, set_abort_on_interrupt};
@@ -296,7 +295,10 @@ mod tests {
             current_user: false,
             last_used: None,
         };
-        assert_eq!(combine_username(&user).as_str(), "username@testing.test");
+        assert_eq!(
+            combine_username(&user).as_str(),
+            "username@testing.test (Last Used: Never)"
+        );
     }
 
     #[test]
@@ -321,8 +323,8 @@ mod tests {
         let stdout = out.take();
         assert_eq!(
             stdout,
-            "  username.1@testing.test.1\n* username.2@testing.test.2\n  \
-             username.3@testing.test.3\n"
+            "  username.1@testing.test.1 (Last Used: Never)\n* username.2@testing.test.2 (Last Used: Never)\n  \
+             username.3@testing.test.3 (Last Used: Never)\n"
         );
     }
 
@@ -380,9 +382,9 @@ mod tests {
                 eq("select a user"),
                 eq(0),
                 eq([
-                    String::from("username.1@testing.test.1"),
-                    String::from("username.2@testing.test.2"),
-                    String::from("username.3@testing.test.3"),
+                    String::from("username.1@testing.test.1 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
             )
@@ -442,9 +444,9 @@ mod tests {
                 eq("select a user"),
                 eq(0),
                 eq([
-                    String::from("username.1@testing.test.1"),
-                    String::from("username.2@testing.test.2"),
-                    String::from("username.3@testing.test.3"),
+                    String::from("username.1@testing.test.1 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
             )
@@ -534,9 +536,9 @@ mod tests {
                 eq("select a user"),
                 eq(0),
                 eq([
-                    String::from("username.1@testing.test.1"),
-                    String::from("username.2@testing.test.2"),
-                    String::from("username.3@testing.test.3"),
+                    String::from("username.1@testing.test.1 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
             )

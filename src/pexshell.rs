@@ -132,7 +132,7 @@ impl<'a> PexShell<'a> {
         };
 
         config.set_last_used();
-        config.write_to_file();
+        config.write_to_file()?;
 
         Ok(())
     }
