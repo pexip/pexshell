@@ -28,10 +28,12 @@ use lib::{
 use log::{error, warn, LevelFilter};
 use parking_lot::RwLock;
 use serde_json::Value;
+#[cfg(unix)]
 use simple_signal::Signal;
 use std::collections::HashMap;
 use tokio::io::AsyncReadExt;
 
+#[cfg(unix)]
 use crate::consts::EXIT_CODE_INTERRUPTED;
 
 static ABORT_ON_INTERRUPT: RwLock<bool> = RwLock::new(true);
@@ -203,6 +205,7 @@ async fn main() {
     log::set_max_level(LevelFilter::max());
     log::set_logger(&*LOGGER).expect("this can only fail if a logger has already been set");
 
+    #[cfg(unix)]
     simple_signal::set_handler(&[Signal::Int], |signals| {
         if *ABORT_ON_INTERRUPT.read() {
             error!("received signals: {signals:?} - aborting");
