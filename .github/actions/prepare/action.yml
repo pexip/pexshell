@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - id: toolchain
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
