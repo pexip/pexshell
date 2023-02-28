@@ -29,7 +29,7 @@ runs:
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
           target/
-        key: ${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ inputs.cache-id }}-${{ hashFiles('**/Cargo.toml') }}
+        key: ${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ inputs.cache-id }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
     # Declares the repository safe and not under dubious ownership.
     - name: Add repository to git safe directories
       run: git config --global --add safe.directory $GITHUB_WORKSPACE
