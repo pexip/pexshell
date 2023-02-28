@@ -21,7 +21,7 @@ runs:
         components: ${{ inputs.rust-components }}
     - name: Get current date
       id: current-date
-      run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_STATE
+      run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
       shell: bash
     - uses: actions/cache@v3
       with:
