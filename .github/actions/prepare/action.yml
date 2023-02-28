@@ -15,10 +15,14 @@ runs:
   using: "composite"
   steps:
     - id: toolchain
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
+    - name: Get current date
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_STATE
+      shell: bash
     - uses: actions/cache@v3
       with:
         path: |
@@ -28,8 +32,14 @@ runs:
           ~/.cargo/git/db/
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
+        key: deps-${{ runner.os }}-${{ inputs.cache-id }}-${{ steps.date.outputs.date }}
+        restore-keys: |
+          deps-${{ runner.os }}-${{ inputs.cache-id }}-
+    - uses: actions/cache@v3
+      with:
+        path: |
           target/
-        key: ${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ inputs.cache-id }}-${{ hashFiles('**/Cargo.toml') }}
+        key: target-${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ inputs.cache-id }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
     # Declares the repository safe and not under dubious ownership.
     - name: Add repository to git safe directories
       run: git config --global --add safe.directory $GITHUB_WORKSPACE
