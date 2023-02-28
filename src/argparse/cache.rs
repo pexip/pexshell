@@ -55,6 +55,9 @@ impl Cache {
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
             eprintln!("Cache created.");
+
+            config.set_last_used();
+            config.write_to_file();
         }
         Ok(())
     }

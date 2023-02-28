@@ -1,6 +1,8 @@
-use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
+use std::time::Instant;
+use std::{collections::HashMap, time::SystemTime};
+use time::format_description;
 
 use crate::{config, consts::EXIT_CODE_INTERRUPTED, set_abort_on_interrupt};
 use dialoguer::{theme::ColorfulTheme as ColourfulTheme, FuzzySelect, Input, Password};
@@ -14,6 +16,7 @@ use log::error;
 #[cfg(test)]
 use mockall::automock;
 use reqwest::StatusCode;
+use time::OffsetDateTime;
 
 use super::Console;
 
@@ -65,8 +68,30 @@ impl Interact for Interactive {
     }
 }
 
+fn format_last_used(user: &config::User) -> String {
+    let format =
+        format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
+
+    match user.last_used {
+        Some(timestamp) => {
+            let time_diff = OffsetDateTime::from_unix_timestamp(timestamp)
+                .unwrap()
+                .format(&format)
+                .unwrap();
+
+            format!("(Last Used: {})", time_diff)
+        }
+        None => String::from("(Last Used: Never)"),
+    }
+}
+
 fn combine_username(user: &config::User) -> String {
-    format!("{}@{}", user.username, user.address)
+    format!(
+        "{}@{} {}",
+        user.username,
+        user.address,
+        format_last_used(user)
+    )
 }
 
 async fn test_request(
@@ -104,6 +129,7 @@ async fn test_request(
                 e => error::UserFriendly::new(e.to_string()),
             })?;
 
+            user.last_used = Some(OffsetDateTime::now_utc().unix_timestamp());
             Ok(())
         }
         _ => panic!(),
@@ -156,7 +182,7 @@ impl<Backend: Interact> Login<Backend> {
             let selection = self.interact.select("select a user", 0, &user_list);
 
             if user_list[selection] == ADD_A_USER_OPTION {
-                let user = self.input_user();
+                let mut user = self.input_user();
 
                 if verify_credentials {
                     test_request(client, config, &user).await?;
@@ -242,18 +268,21 @@ mod tests {
             username: String::from("username.1"),
             password: Some(SensitiveString::from("password.1")),
             current_user: false,
+            last_used: None,
         };
         let user_2 = User {
             address: String::from("testing.test.2"),
             username: String::from("username.2"),
             password: Some(SensitiveString::from("password.2")),
             current_user: true,
+            last_used: None,
         };
         let user_3 = User {
             address: String::from("testing.test.3"),
             username: String::from("username.3"),
             password: Some(SensitiveString::from("password.3")),
             current_user: false,
+            last_used: None,
         };
         vec![user_1, user_2, user_3]
     }
@@ -265,6 +294,7 @@ mod tests {
             username: String::from("username"),
             password: Some(SensitiveString::from("password")),
             current_user: false,
+            last_used: None,
         };
         assert_eq!(combine_username(&user).as_str(), "username@testing.test");
     }

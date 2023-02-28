@@ -130,6 +130,10 @@ impl<'a> PexShell<'a> {
             }
             ApiResponse::Nothing => (),
         };
+
+        config.set_last_used();
+        config.write_to_file();
+
         Ok(())
     }
 
@@ -209,7 +213,7 @@ impl<'a> PexShell<'a> {
         }
 
         // api request
-        self.api_request(client, &config, &matches, &schemas)
+        self.api_request(client, &mut config, &matches, &schemas)
             .await?;
         Ok(())
     }

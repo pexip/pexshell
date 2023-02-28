@@ -14,6 +14,7 @@ use std::io::{Read, Seek, Write};
 use std::ops::Not;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
+use time::OffsetDateTime;
 
 #[cfg(test)]
 use mockall::mock;
@@ -28,6 +29,7 @@ pub struct User {
     pub password: Option<SensitiveString>,
     #[serde(default, skip_serializing_if = "Not::not")]
     pub current_user: bool,
+    pub last_used: Option<i64>,
 }
 
 impl User {
@@ -107,6 +109,8 @@ pub trait Configurer: Send + Sync {
     fn set_current_user(&mut self, user: &User);
 
     fn try_get_current_user(&self) -> Option<&User>;
+
+    fn set_last_used(&mut self);
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -361,6 +365,7 @@ impl Manager {
             username,
             password,
             current_user: false,
+            last_used: None,
         })
     }
 }
@@ -473,6 +478,16 @@ impl Configurer for Manager {
     #[must_use]
     fn try_get_current_user(&self) -> Option<&User> {
         self.config.users.iter().find(|user| user.current_user)
+    }
+
+    fn set_last_used(&mut self) {
+        let mut user = self
+            .config
+            .users
+            .iter_mut()
+            .find(|user| user.current_user)
+            .unwrap();
+        user.last_used = Some(OffsetDateTime::now_utc().unix_timestamp());
     }
 }
 
