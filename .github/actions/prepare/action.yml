@@ -32,7 +32,7 @@ runs:
           ~/.cargo/git/db/
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
-        key: deps-${{ runner.os }}-${{ inputs.cache-id }}-${{ steps.date.outputs.date }}
+        key: deps-${{ runner.os }}-${{ inputs.cache-id }}-${{ env.date }}
         restore-keys: |
           deps-${{ runner.os }}-${{ inputs.cache-id }}-
     - uses: actions/cache@v3
