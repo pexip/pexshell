@@ -129,7 +129,7 @@ impl<'a> Manager<'a> {
 
     /// Reads the config from a file, returning the result.
     ///
-    /// Will return Ok(None) if the file does not exist,
+    /// Will return Err if the file does not exist,
     /// or an Err if the file can't be read or is invalid.
     pub fn read_from_file(
         config_file_path: &Path,

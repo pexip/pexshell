@@ -167,7 +167,7 @@ impl<'a> PexShell<'a> {
     pub async fn run(&mut self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Read config file
         let config_file = self.config_dir.join("config.toml");
-        // Option<RwLock<File>> = None
+        // File lock option to store the File Lock to maintain the lifetime
         let mut file_lock: Option<RwLock<File>> = None;
         let mut config = read_config(&config_file, &mut file_lock, &self.env)?;
 
@@ -254,6 +254,9 @@ impl<'a> PexShell<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use crate::pexshell::read_config;
     use lib::util::SimpleLogger;
     use log::{Level, Log, Record};
 
@@ -278,5 +281,18 @@ mod tests {
         // Act & Assert
         assert!(logger.enabled(record_1.metadata()));
         assert!(!logger.enabled(record_2.metadata()));
+    }
+
+    #[test]
+    pub fn test_read_from_file_not_found() {
+        // Arrange
+        let config_path = std::env::temp_dir().join("pex_config_file_that_should_not_exist.toml");
+
+        // Act
+        let mut file_lock = None;
+        let _config = read_config(&config_path, &mut file_lock, &HashMap::default()).unwrap();
+
+        // Assert
+        assert!(config_path.exists());
     }
 }
