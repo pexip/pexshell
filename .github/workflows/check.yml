@@ -41,8 +41,6 @@ jobs:
         with:
           cache-id: cargo-sort
       - name: Install dependencies
-        run: |
-          rustc --version && cargo --version # Print version info for debugging && \
-          cargo install cargo-sort
+        run: cargo install cargo-sort
       - name: Check formatting
         run: cargo sort --check --workspace
