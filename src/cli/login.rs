@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
-use time::format_description;
 
 use crate::{config, consts::EXIT_CODE_INTERRUPTED, set_abort_on_interrupt};
 use dialoguer::{theme::ColorfulTheme as ColourfulTheme, FuzzySelect, Input, Password};
@@ -15,7 +14,6 @@ use log::error;
 #[cfg(test)]
 use mockall::automock;
 use reqwest::StatusCode;
-use time::OffsetDateTime;
 
 use super::Console;
 
@@ -68,20 +66,10 @@ impl Interact for Interactive {
 }
 
 fn format_last_used(user: &config::User) -> String {
-    let format =
-        format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
-
-    match user.last_used {
-        Some(timestamp) => {
-            let time_diff = OffsetDateTime::from_unix_timestamp(timestamp)
-                .unwrap()
-                .format(&format)
-                .unwrap();
-
-            format!("(Last Used: {})", time_diff)
-        }
-        None => String::from("(Last Used: Never)"),
-    }
+    user.last_used.map_or_else(
+        || String::from("(Last Used: Never)"),
+        |datetime| format!("(Last Used: {})", datetime.format("%Y-%m-%d %H:%M:%S")),
+    )
 }
 
 fn combine_username(user: &config::User) -> String {
@@ -128,7 +116,7 @@ async fn test_request(
                 e => error::UserFriendly::new(e.to_string()),
             })?;
 
-            user.last_used = Some(OffsetDateTime::now_utc().unix_timestamp());
+            user.last_used = Some(chrono::offset::Utc::now());
             Ok(())
         }
         _ => panic!(),

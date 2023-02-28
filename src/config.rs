@@ -5,9 +5,13 @@ use crate::consts::{
 };
 use crate::error;
 use crate::Directories;
+use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use fd_lock::{RwLock, RwLockWriteGuard};
 use fslock::LockFile;
 use lib::util::SensitiveString;
 use log::debug;
+#[cfg(test)]
+use mockall::automock;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
@@ -29,7 +33,8 @@ pub struct User {
     pub password: Option<SensitiveString>,
     #[serde(default, skip_serializing_if = "Not::not")]
     pub current_user: bool,
-    pub last_used: Option<i64>,
+    #[serde(with = "ts_seconds_option", default)]
+    pub last_used: Option<DateTime<Utc>>,
 }
 
 impl User {
@@ -283,7 +288,8 @@ impl Manager {
             file_handle
                 .read_to_string(&mut config)
                 .map_err(|_| error::UserFriendly::new("config is invalid"))?;
-            toml::from_str(&config).map_err(|_| error::UserFriendly::new("config is invalid"))
+            toml::from_str(&config)
+                .map_err(|e| error::UserFriendly::new(format!("config is invalid {e}")))
         }?;
 
         debug!("Read the following config: {:?}", &config);
@@ -487,7 +493,7 @@ impl Configurer for Manager {
             .iter_mut()
             .find(|user| user.current_user)
             .unwrap();
-        user.last_used = Some(OffsetDateTime::now_utc().unix_timestamp());
+        user.last_used = Some(chrono::offset::Utc::now());
     }
 }
 
