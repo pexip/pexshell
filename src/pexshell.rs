@@ -259,6 +259,7 @@ mod tests {
     use crate::pexshell::read_config;
     use lib::util::SimpleLogger;
     use log::{Level, Log, Record};
+    use uuid::Uuid;
 
     /// Make sure logging enabled logic is working in the shell crate
     #[test]
@@ -286,13 +287,24 @@ mod tests {
     #[test]
     pub fn test_read_from_file_not_found() {
         // Arrange
-        let config_path = std::env::temp_dir().join("pex_config_file_that_should_not_exist.toml");
+        let config_path = std::env::temp_dir().join(format!(
+            "pex_config_file_that_should_not_exist-{}.toml",
+            Uuid::new_v4(),
+        ));
+        assert!(!config_path.exists());
 
         // Act
         let mut file_lock = None;
-        let _config = read_config(&config_path, &mut file_lock, &HashMap::default()).unwrap();
+        let config = read_config(&config_path, &mut file_lock, &HashMap::default()).unwrap();
+        drop(config);
 
         // Assert
         assert!(config_path.exists());
+        assert_eq!(
+            std::fs::read_to_string(&config_path).unwrap(),
+            "users = []\n"
+        );
+
+        std::fs::remove_file(config_path).unwrap();
     }
 }

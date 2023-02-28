@@ -119,12 +119,16 @@ impl<'a> Manager<'a> {
             .write()
             .expect("failed to acquire read lock");
 
-        Ok(Self {
+        let mut manager = Self {
             config,
             env,
             keyring: Arc::new(Mutex::new(Box::new(keyring))),
             config_file,
-        })
+        };
+
+        manager.write_to_file()?;
+
+        Ok(manager)
     }
 
     /// Reads the config from a file, returning the result.
@@ -448,16 +452,16 @@ mod tests {
     pub fn test_read_empty_config_file() {
         // Arrange
         let test_context = get_test_context();
-        let work_dir = test_context.get_test_dir().to_str().unwrap();
+        let work_dir = test_context.get_test_dir();
 
         let config = "";
-        let config_path = format!("{}/config.toml", &work_dir);
+        let config_path = work_dir.join("config.toml");
         std::fs::write(&config_path, config).unwrap();
 
         // Act
         let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            Path::new(&config_path),
+            &config_path,
             &mut file_lock,
             HashMap::default(),
             credentials::MockProvider::new(),
@@ -474,10 +478,10 @@ mod tests {
     pub fn test_invalid_read_config_file() {
         // Arrange
         let test_context = get_test_context();
-        let work_dir = test_context.get_test_dir().to_str().unwrap();
+        let work_dir = test_context.get_test_dir();
 
         let config = b"\xf0\x28\x8c\x28";
-        let config_path = format!("{}/config.toml", &work_dir);
+        let config_path = work_dir.join("config.toml");
         std::fs::write(&config_path, config).unwrap();
 
         // Act
@@ -500,7 +504,7 @@ mod tests {
     pub fn test_read_from_file() {
         // Arrange
         let test_context = get_test_context();
-        let work_dir = test_context.get_test_dir().to_str().unwrap();
+        let work_dir = test_context.get_test_dir();
         let config = r#"
         [log]
         file = "/path/to/some/pexshell.log"
@@ -518,13 +522,13 @@ mod tests {
         password = "another_password"
         current_user = true
         "#;
-        let config_path = format!("{}/config.toml", &work_dir);
+        let config_path = work_dir.join("config.toml");
         std::fs::write(&config_path, config).unwrap();
 
         // Act
         let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            Path::new(&config_path),
+            &config_path,
             &mut file_lock,
             HashMap::default(),
             credentials::MockProvider::new(),
@@ -602,6 +606,7 @@ mod tests {
 
         // Act
         mgr.write_to_file().unwrap();
+        drop(mgr);
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
@@ -710,6 +715,7 @@ current_user = true
         mgr.write_to_file().unwrap();
         mgr.delete_user(0).unwrap();
         mgr.write_to_file().unwrap();
+        drop(mgr);
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
