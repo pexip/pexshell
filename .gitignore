@@ -1,0 +1,6 @@
+/target
+.vscode
+.DS_Store
+.env
+.idea
+*.zip

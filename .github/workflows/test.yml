@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: cargo-sort
+          rust-version: nightly
+          rust-components: llvm-tools-preview
+      - name: Install dependencies
+        run: cargo install cargo-nextest cargo-llvm-cov
+      - name: Run tests
+        run: cargo llvm-cov --workspace --locked nextest --html --features ci
+      - name: Upload test report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: report
+          path: target/nextest/default/report.xml
+          retention-days: 30
+      - name: Upload coverage results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage
+          path: target/llvm-cov/
+          retention-days: 30

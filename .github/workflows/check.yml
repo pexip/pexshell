@@ -1,0 +1,48 @@
+name: Check
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: cargo-fmt
+      - name: Check formatting
+        run: rustc --version && cargo --version && cargo fmt --all --check
+
+  cargo-clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: cargo-clippy
+      - name: Clippy
+        run: cargo clippy --workspace --locked --tests
+
+  cargo-sort:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: cargo-sort
+      - name: Install dependencies
+        run: |
+          rustc --version && cargo --version # Print version info for debugging && \
+          cargo install cargo-sort
+      - name: Check formatting
+        run: cargo sort --check --workspace

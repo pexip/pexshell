@@ -1,0 +1,100 @@
+accepted = ["MIT", "Apache-2.0"]
+workarounds = ["ring", "chrono", "rustls"]
+
+[async-trait.clarify]
+license = "MIT OR Apache-2.0"
+
+[[async-trait.clarify.files]]
+path = "LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+
+[[async-trait.clarify.files]]
+path = "LICENSE-MIT"
+license = "MIT"
+checksum = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[bstr.clarify]
+license = "MIT OR Apache-2.0"
+
+[[bstr.clarify.files]]
+path = "LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+[[bstr.clarify.files]]
+path = "LICENSE-MIT"
+license = "MIT"
+checksum = "6b7374c39a57e57fc2c38eb529c4c88340152b10f51dd5ae2d819dfa67f61715"
+
+[colored_json]
+accepted = ["EPL-2.0"]
+
+[encoding_rs]
+accepted = ["BSD-3-Clause"]
+
+[git-version]
+accepted = ["BSD-2-Clause"]
+
+[git-version-macro]
+accepted = ["BSD-2-Clause"]
+
+[instant]
+accepted = ["BSD-3-Clause"]
+
+[pexshell]
+accepted = ["BSD-3-Clause"]
+
+[ring]
+accepted = ["ISC", "OpenSSL"]
+
+[subtle]
+accepted = ["BSD-3-Clause"]
+
+[time.clarify]
+license = "MIT OR Apache-2.0"
+
+[[time.clarify.files]]
+path = "LICENSE-Apache"
+license = "Apache-2.0"
+checksum = "b8929fea28678da67251fb2daf9438f67503814211051861612441806d8edb05"
+
+[[time.clarify.files]]
+path = "LICENSE-MIT"
+license = "MIT"
+checksum = "04620bf27e4a643dd47bf27652320c205acdb776c1f9f24bb8c3bfaba10804c5"
+
+[typenum.clarify]
+license = "MIT OR Apache-2.0"
+
+[[typenum.clarify.files]]
+path = "LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "516b24e051bf5630880ebbd55c40a25ce9552ebaf8970a53e8976eb70e522406"
+
+[[typenum.clarify.files]]
+path = "LICENSE-MIT"
+license = "MIT"
+checksum = "a825bd853ab71619a4923d7b4311221427848070ff44d990da39b0b274c1683f"
+
+[unicode-ident]
+accepted = ["Unicode-DFS-2016"]
+
+[untrusted]
+accepted = ["ISC"]
+
+[webpki]
+accepted = ["ISC", "BSD-3-Clause"]
+
+[webpki.clarify]
+license = "ISC AND BSD-3-Clause"
+
+[[webpki.clarify.files]]
+path = 'LICENSE'
+license = "ISC"
+checksum = "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a"
+
+[[webpki.clarify.files]]
+path = 'third-party/chromium/LICENSE'
+license = "BSD-3-Clause"
+checksum = "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"

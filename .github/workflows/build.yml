@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: cargo-build
+      - name: Install dependencies
+        run: cargo install cargo-nextest
+      - name: Build
+        run: cargo build --workspace --release --locked --verbose
+      - name: Test
+        run: cargo nextest run --workspace --release --locked
+      - name: Upload build
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: target/release/pexshell
+          retention-days: 7
