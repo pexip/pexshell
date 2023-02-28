@@ -1491,6 +1491,7 @@ dependencies = [
  "test_helpers",
  "tokio",
  "toml",
+ "uuid",
  "version",
 ]
 
