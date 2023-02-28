@@ -27,9 +27,9 @@ impl Cache {
             )
     }
 
-    pub async fn run(
+    pub async fn run<'a>(
         &self,
-        config: &mut ConfigManager,
+        config: &mut ConfigManager<'a>,
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,

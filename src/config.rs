@@ -3,11 +3,13 @@ use crate::consts::{
     ENV_USER_USERNAME,
 };
 use crate::{cli::Console, error};
+use fd_lock::{RwLock, RwLockWriteGuard};
 use lib::util::SensitiveString;
 use log::debug;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::Path, sync::Arc};
+use std::io::{Read, Seek, Write};
+use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
 
 #[cfg(test)]
 use mockall::automock;
@@ -61,13 +63,14 @@ pub struct Config {
     users: Vec<User>,
 }
 
-pub struct Manager {
+pub struct Manager<'a> {
     config: Config,
     env: HashMap<String, String>,
     keyring: Arc<Mutex<Box<dyn credentials::Provider>>>,
+    config_file: RwLockWriteGuard<'a, File>,
 }
 
-impl Manager {
+impl<'a> Manager<'a> {
     fn get_var<T>(
         &self,
         env_name: &str,
@@ -83,20 +86,45 @@ impl Manager {
         )
     }
 
-    pub fn with_config(config: Config, env: HashMap<String, String>) -> Self {
-        Self::with_config_and_keyring(config, env, credentials::Keyring {})
+    pub fn with_config(
+        config: Config,
+        config_file: &Path,
+        file_lock: &'a mut Option<RwLock<File>>,
+        env: HashMap<String, String>,
+    ) -> Result<Self, error::UserFriendly> {
+        Self::with_config_and_keyring(config, config_file, file_lock, env, credentials::Keyring {})
     }
 
     fn with_config_and_keyring(
         config: Config,
+        config_file_path: &Path,
+        file_lock: &'a mut Option<RwLock<File>>,
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + 'static,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, error::UserFriendly> {
+        let config_file_lock = RwLock::new(
+            File::options()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .open(config_file_path)
+                .map_err(|_| error::UserFriendly::new("failed to read config file"))?,
+        );
+
+        *file_lock = Some(config_file_lock);
+
+        let config_file = file_lock
+            .as_mut()
+            .unwrap()
+            .write()
+            .expect("failed to acquire read lock");
+
+        Ok(Self {
             config,
             env,
             keyring: Arc::new(Mutex::new(Box::new(keyring))),
-        }
+            config_file,
+        })
     }
 
     /// Reads the config from a file, returning the result.
@@ -104,43 +132,69 @@ impl Manager {
     /// Will return Ok(None) if the file does not exist,
     /// or an Err if the file can't be read or is invalid.
     pub fn read_from_file(
-        config_file: impl AsRef<Path>,
+        config_file_path: &Path,
+        file_lock: &'a mut Option<RwLock<File>>,
         env: HashMap<String, String>,
-    ) -> Result<Option<Self>, error::UserFriendly> {
-        Self::read_from_file_with_keyring(config_file, env, credentials::Keyring {})
+    ) -> Result<Self, error::UserFriendly> {
+        Self::read_from_file_with_keyring(config_file_path, file_lock, env, credentials::Keyring {})
     }
 
     fn read_from_file_with_keyring(
-        config_file: impl AsRef<Path>,
+        config_file_path: &Path,
+        file_lock: &'a mut Option<RwLock<File>>,
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + 'static,
-    ) -> Result<Option<Self>, error::UserFriendly> {
-        let config_file = config_file.as_ref();
-        debug!("Reading config from file: {:?}", &config_file);
-        if !config_file.exists() {
-            return Ok(None);
-        }
+    ) -> Result<Self, error::UserFriendly> {
+        let config_file_lock = RwLock::new(
+            File::options()
+                .read(true)
+                .write(true)
+                .open(config_file_path)
+                .map_err(|_| error::UserFriendly::new("failed to read config file"))?,
+        );
 
-        let config = fs::read_to_string(config_file)
-            .map_err(|_| error::UserFriendly::new("failed to read config file"))?;
-        let config: Config = toml::from_str(config.as_str())
-            .map_err(|_| error::UserFriendly::new("config is invalid"))?;
+        *file_lock = Some(config_file_lock);
+
+        let mut config_file = file_lock
+            .as_mut()
+            .unwrap()
+            .write()
+            .expect("failed to acquire read lock");
+
+        let config: Config = {
+            let mut config = String::new();
+            config_file
+                .read_to_string(&mut config)
+                .map_err(|_| error::UserFriendly::new("config is invalid"))?;
+            toml::from_str(&config).map_err(|_| error::UserFriendly::new("config is invalid"))
+        }?;
+
         debug!("Read the following config: {:?}", &config);
 
-        Ok(Some(Self {
+        Ok(Self {
             config,
             env,
             keyring: Arc::new(Mutex::new(Box::new(keyring))),
-        }))
+            config_file,
+        })
     }
 
     /// Writes the config to a file.
     ///
     /// Will return an Err if the config cannot be serialised or writing to the file fails.
-    pub fn write_to_file(&self, config_file: &Path) -> Result<(), error::UserFriendly> {
+    pub fn write_to_file(&mut self) -> Result<(), error::UserFriendly> {
         let s = toml::to_string(&self.config).expect("config serialisation should not fail");
-        fs::write(config_file, s)
+
+        self.do_write(&s)
             .map_err(|e| error::UserFriendly::new(format!("could not write config file: {e}")))
+    }
+
+    fn do_write(&mut self, content: &str) -> Result<(), std::io::Error> {
+        let config_file = &mut self.config_file;
+
+        config_file.set_len(0)?;
+        config_file.seek(std::io::SeekFrom::Start(0))?;
+        config_file.write_all(content.as_bytes())
     }
 
     /// Gets a user entirely defined by environment variables (if they are all set)
@@ -159,7 +213,7 @@ impl Manager {
     }
 }
 
-impl Provider for Manager {
+impl Provider for Manager<'_> {
     fn get_log_file(&self) -> Option<String> {
         self.env.get(ENV_LOG_FILE).cloned().map_or_else(
             || self.config.log.as_ref().and_then(|l| l.file.clone()),
@@ -385,28 +439,10 @@ mod credentials {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use test_helpers::get_test_context;
 
     use super::*;
-
-    #[test]
-    pub fn test_read_from_file_not_found() {
-        // Arrange
-        let config_path = std::env::temp_dir().join("pex_config_file_that_should_not_exist.toml");
-
-        // Act
-        let config = Manager::read_from_file_with_keyring(
-            config_path,
-            HashMap::default(),
-            credentials::MockProvider::new(),
-        )
-        .unwrap();
-
-        // Assert
-        assert!(config.is_none());
-    }
+    use std::io::ErrorKind;
 
     #[test]
     pub fn test_read_empty_config_file() {
@@ -419,15 +455,17 @@ mod tests {
         std::fs::write(&config_path, config).unwrap();
 
         // Act
+        let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            PathBuf::from(&config_path),
+            Path::new(&config_path),
+            &mut file_lock,
             HashMap::default(),
             credentials::MockProvider::new(),
         );
 
         // Assert
         assert!(config.is_err());
-        let e = config.map(|m| m.unwrap().config).unwrap_err();
+        let e = config.map(|m| m.config).unwrap_err();
 
         assert_eq!(format!("{e}").as_str(), "config is invalid");
     }
@@ -443,17 +481,19 @@ mod tests {
         std::fs::write(&config_path, config).unwrap();
 
         // Act
+        let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            PathBuf::from(&config_path),
+            Path::new(&config_path),
+            &mut file_lock,
             HashMap::default(),
             credentials::MockProvider::new(),
         );
 
         // Assert
         assert!(config.is_err());
-        let e = config.map(|m| m.unwrap().config).unwrap_err();
+        let e = config.map(|m| m.config).unwrap_err();
 
-        assert_eq!(format!("{e}").as_str(), "failed to read config file");
+        assert_eq!(format!("{e}").as_str(), "config is invalid");
     }
 
     #[test]
@@ -482,12 +522,13 @@ mod tests {
         std::fs::write(&config_path, config).unwrap();
 
         // Act
+        let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            PathBuf::from(&config_path),
+            Path::new(&config_path),
+            &mut file_lock,
             HashMap::default(),
             credentials::MockProvider::new(),
         )
-        .unwrap()
         .unwrap()
         .config;
 
@@ -549,10 +590,18 @@ mod tests {
         let config_path = test_context.get_test_dir().join("config.toml");
         let keyring = credentials::MockProvider::new();
 
-        let mgr = Manager::with_config_and_keyring(config, HashMap::default(), keyring);
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
 
         // Act
-        mgr.write_to_file(&config_path).unwrap();
+        mgr.write_to_file().unwrap();
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
@@ -567,6 +616,108 @@ address = "test_address.test.com"
 username = "admin"
 password = "some_admin_password"
 current_user = false
+
+[[users]]
+address = "test_address.testing.com"
+username = "a_user"
+current_user = true
+"#
+        );
+    }
+
+    #[test]
+    fn test_multiple_writers() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: None,
+            users: vec![User {
+                address: String::from("test_address.test.com"),
+                username: String::from("admin"),
+                password: None,
+                current_user: false,
+            }],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let keyring = credentials::MockProvider::new();
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+
+        let test_lock = RwLock::new(
+            File::options()
+                .read(true)
+                .write(true)
+                .open(&config_path)
+                .unwrap(),
+        );
+        // Act
+        mgr.write_to_file().unwrap();
+        let err = test_lock.try_read().unwrap_err();
+
+        // Assert
+        assert!(matches!(err.kind(), ErrorKind::WouldBlock));
+    }
+
+    #[test]
+    fn test_write_to_and_override_file() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(String::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let keyring = credentials::MockProvider::new();
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+
+        // Act
+        mgr.write_to_file().unwrap();
+        mgr.delete_user(0).unwrap();
+        mgr.write_to_file().unwrap();
+
+        // Assert
+        let written_config = std::fs::read_to_string(&config_path).unwrap();
+        assert_eq!(
+            written_config,
+            r#"[log]
+file = "/path/to/some/pexshell.log"
+level = "debug"
 
 [[users]]
 address = "test_address.testing.com"
