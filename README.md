@@ -35,8 +35,8 @@ You can find more usage examples in [EXAMPLES.md](https://github.com/pexip/pexsh
 
 ### Unattended/simultaneous login
 
-To facilitate use of Pexshell in scripts, you can override login details by setting the `PEX_ADDRESS`, `PEX_USER` and `PEX_PASS` environment variables (to the management node address, username and password respectively).
-If the user's credentials are already stored (they have logged in using the interactive `pexshell login` command) then the `PEX_PASS` variable can be omitted and it will be retrieved from the credential store.
+To facilitate use of Pexshell in scripts, you can override login details by setting the `PEXSHELL_ADDRESS`, `PEXSHELL_USERNAME` and `PEXSHELL_PASSWORD` environment variables (to the management node address, username and password respectively).
+If the user's credentials are already stored (they have logged in using the interactive `pexshell login` command) then the `PEXSHELL_PASSWORD` variable can be omitted and it will be retrieved from the credential store.
 
 ## Logging
 
@@ -49,7 +49,7 @@ level = "debug"
 stderr = true
 ```
 
-The values in the config file can be overridden with the environment variables `PEX_LOG_LEVEL`, `PEX_LOG` and `PEX_LOG_TO_STDERR`. If `stderr` or `PEX_LOG_TO_STDERR` is set then logs will also be ouput to `STDERR` as well as the configured log file.
+The values in the config file can be overridden with the environment variables `PEXSHELL_LOG_LEVEL`, `PEXSHELL_LOG_FILE` and `PEXSHELL_LOG_TO_STDERR`. If `stderr` or `PEXSHELL_LOG_TO_STDERR` is set then logs will also be output to `STDERR` as well as the configured log file.
 
 ## Licenses
 
