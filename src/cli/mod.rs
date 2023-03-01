@@ -573,7 +573,6 @@ mod tests {
         );
         assert_eq!(
             command
-                .clone()
                 .try_get_matches_from(["test", "status", "conference", "patch", "1"])
                 .unwrap_err()
                 .kind(),
