@@ -61,7 +61,7 @@ runs:
       shell: bash
     - name: Install dependencies
       run: |
-        [ $crates != "" ] || cargo install ${crates//,/ }
+        [[ $crates != "" ]] && cargo install ${crates//,/ }
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
