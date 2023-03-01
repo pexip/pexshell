@@ -22,15 +22,18 @@ runs:
       with:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
-    - name: Get current date
-      id: current-date
-      run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+    - id: vars
+      run: |
+        echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        echo "CRATES_HASH=$(echo $crates | tr ',' '\n' | sort | sha256sum | cut -d " " -f 1)" >> $GITHUB_OUTPUT
+      env:
+        crates: ${{ inputs.cargo-install }}
       shell: bash
     - uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry/index/
-        key: regindex-${{ runner.os }}-${{ steps.current-date.outputs.CURRENT_DATE }}
+        key: regindex-${{ runner.os }}-${{ steps.vars.outputs.CURRENT_DATE }}
         restore-keys: |
           regindex-${{ runner.os }}-
     - uses: actions/cache@v3
@@ -41,9 +44,9 @@ runs:
           ~/.cargo/git/db/
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
-        key: deps-${{ runner.os }}-${{ inputs.cargo-install }}-${{ steps.current-date.outputs.CURRENT_DATE }}
+        key: deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-${{ steps.vars.outputs.CURRENT_DATE }}
         restore-keys: |
-          deps-${{ runner.os }}-${{ inputs.cargo-install }}-
+          deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-
     - uses: actions/cache@v3
       with:
         path: |
@@ -57,7 +60,7 @@ runs:
       run: rustc --version && cargo --version
       shell: bash
     - name: Install dependencies
-      if: ${{ inputs.cargo-install }} != ""
+      if: ${{ inputs.cargo-install || "" }} != ""
       run: |
         cargo install ${crates//,/ }
       env:
