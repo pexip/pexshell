@@ -9,7 +9,10 @@ inputs:
     required: false
     default: "stable"
   rust-components:
-    description: Comma-separated list of components to be additionally installed
+    description: Comma-separated string of components to be additionally installed
+    required: false
+  rust-targets:
+    description: Comma-separated string of additional targets to install
     required: false
   cargo-install:
     description: Comma-separated list of crates to cargo install
@@ -22,6 +25,7 @@ runs:
       with:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
+        targets: ${{ inputs.rust-targets }}
     - id: vars
       run: |
         echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
