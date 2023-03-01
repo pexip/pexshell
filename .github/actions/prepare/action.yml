@@ -70,6 +70,6 @@ runs:
         crates: ${{ inputs.cargo-install }}
       shell: bash
     - name: "Install musl"
-      if: ${{ runner.os }} == 'Linux'
-      run: sudo apt-get install -y musl musl-dev musl-tools
+      run: |
+        if [[ $(command -v apt-get) ]]; then sudo apt-get install -y musl musl-dev musl-tools; fi
       shell: bash
