@@ -2,13 +2,11 @@ use crate::{
     argparse,
     cli::Console,
     config::{Config, Manager as ConfigManager, Provider},
-    LOGGER,
+    Directories, LOGGER,
 };
 
 use fd_lock::RwLock;
 use futures::TryStreamExt;
-use is_terminal::IsTerminal;
-use lazy_static::lazy_static;
 use lib::{
     error,
     mcu::{
@@ -24,44 +22,33 @@ use std::{
     fs::{self, File},
     future,
     io::Write,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
-lazy_static! {
-    static ref CONFIG_DIR: PathBuf = {
-        let base_dirs = directories::BaseDirs::new().expect("could not find user base directories");
-        base_dirs.config_dir().join("pexip/pexshell")
-    };
-    static ref CACHE_DIR: PathBuf = {
-        let base_dirs = directories::BaseDirs::new().expect("could not find user base directories");
-        base_dirs.cache_dir().join("pexip/pexshell")
-    };
-}
-
 fn read_config<'a>(
-    config_file_path: &Path,
     file_lock: &'a mut Option<RwLock<File>>,
+    dirs: &Directories,
     env: &HashMap<String, String>,
 ) -> Result<ConfigManager<'a>, Box<dyn std::error::Error>> {
-    let config_dir = config_file_path.parent().expect("no parent directory");
     debug!(
         "Ensuring config directory path is created: {:?}",
-        &config_dir
+        &dirs.config_dir
     );
-    fs::create_dir_all(config_dir)?;
+    fs::create_dir_all(&dirs.config_dir)?;
 
+    let config_file_path = dirs.config_dir.join("config.toml");
     debug!("Reading config from file: {:?}", &config_file_path);
 
     if !config_file_path.exists() {
         return Ok(ConfigManager::with_config(
-            Config::default(),
-            config_file_path,
+            Config::new(dirs),
+            &config_file_path,
             file_lock,
             env.clone(),
         )?);
     }
 
-    let config = ConfigManager::read_from_file(config_file_path, file_lock, env.clone())?;
+    let config = ConfigManager::read_from_file(&config_file_path, file_lock, env.clone())?;
 
     LOGGER.set_log_to_stderr(config.get_log_to_stderr());
 
@@ -86,38 +73,19 @@ fn read_config<'a>(
 }
 
 pub struct PexShell<'a> {
-    config_dir: &'a Path,
-    cache_dir: &'a Path,
+    directories: &'a Directories,
     pub console: Console,
     env: HashMap<String, String>,
 }
 
-impl<'a> Default for PexShell<'a> {
-    fn default() -> Self {
-        let stdout = std::io::stdout();
-        let is_stdout_interactive = stdout.is_terminal();
-        let env: HashMap<String, String> = std::env::vars().collect();
-
-        Self {
-            config_dir: &CONFIG_DIR,
-            cache_dir: &CACHE_DIR,
-            console: Console::new(is_stdout_interactive, stdout),
-            env,
-        }
-    }
-}
-
 impl<'a> PexShell<'a> {
-    #[cfg(test)]
     pub const fn new(
-        config_dir: &'a Path,
-        cache_dir: &'a Path,
+        directories: &'a Directories,
         console: Console,
         env: HashMap<String, String>,
     ) -> Self {
         Self {
-            config_dir,
-            cache_dir,
+            directories,
             console,
             env,
         }
@@ -165,14 +133,13 @@ impl<'a> PexShell<'a> {
     }
 
     pub async fn run(&mut self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-        // Read config file
-        let config_file = self.config_dir.join("config.toml");
-        // File lock option to store the File Lock to maintain the lifetime
+        // File lock option to store the config file lock to maintain the lifetime
         let mut file_lock: Option<RwLock<File>> = None;
-        let mut config = read_config(&config_file, &mut file_lock, &self.env)?;
+        // Read config file
+        let mut config = read_config(&mut file_lock, self.directories, &self.env)?;
 
         // Read schema from cache directory
-        let cache_dir = self.cache_dir.join("schemas");
+        let cache_dir = self.directories.cache_dir.join("schemas");
         let all_schemas = if schema::cache_exists(&cache_dir) {
             schema::read_all_schemas(&cache_dir).await?
         } else {
@@ -197,8 +164,8 @@ impl<'a> PexShell<'a> {
         };
 
         // Log to file
-        if let Some(log_file) = matches.get_one::<String>("log") {
-            LOGGER.set_log_file(Some(String::from(log_file)))?;
+        if let Some(log_file) = matches.get_one::<PathBuf>("log") {
+            LOGGER.set_log_file(Some(log_file.clone()))?;
         }
 
         // Setup web client
@@ -256,10 +223,10 @@ impl<'a> PexShell<'a> {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::pexshell::read_config;
+    use crate::{pexshell::read_config, test_util::TestContextExtensions};
     use lib::util::SimpleLogger;
     use log::{Level, Log, Record};
-    use uuid::Uuid;
+    use test_helpers::get_test_context;
 
     /// Make sure logging enabled logic is working in the shell crate
     #[test]
@@ -287,22 +254,33 @@ mod tests {
     #[test]
     pub fn test_read_from_file_not_found() {
         // Arrange
-        let config_path = std::env::temp_dir().join(format!(
-            "pex_config_file_that_should_not_exist-{}.toml",
-            Uuid::new_v4(),
-        ));
+        let test_context = get_test_context();
+        let dirs = test_context.get_directories();
+        let config_path = dirs.config_dir.join("config.toml");
         assert!(!config_path.exists());
 
         // Act
         let mut file_lock = None;
-        let config = read_config(&config_path, &mut file_lock, &HashMap::default()).unwrap();
+        let config = read_config(&mut file_lock, &dirs, &HashMap::default()).unwrap();
         drop(config);
 
         // Assert
         assert!(config_path.exists());
+        let log_file_path = String::from(dirs.tmp_dir.join("pexshell.log").to_str().unwrap());
         assert_eq!(
             std::fs::read_to_string(&config_path).unwrap(),
-            "users = []\n"
+            format!(
+                r#"users = []
+
+[log]
+file = {file_path}
+"#,
+                file_path = if log_file_path.contains('\\') {
+                    format!("'{log_file_path}'")
+                } else {
+                    format!("\"{log_file_path}\"")
+                }
+            )
         );
 
         std::fs::remove_file(config_path).unwrap();
