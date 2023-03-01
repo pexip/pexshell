@@ -1,0 +1,31 @@
+name: Upload Artifact
+description: Allows uploading artifact based on platform
+inputs:
+  artifact-name:
+    description: artifact name
+    required: true
+  path-nix:
+    description: path to upload for nix platforms
+    required: true
+  path-windows:
+    description: path to upload for windows platforms
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Upload build [-nix]
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.artifact-name}}
+        path: ${{ inputs.path-nix }}
+        retention-days: 7
+        if-no-files-found: error
+    - name: Upload build [Windows]
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.artifact-name}}
+        path: ${{ inputs.path-windows }}
+        retention-days: 7
+        if-no-files-found: error

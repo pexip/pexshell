@@ -27,19 +27,9 @@ jobs:
         run: cargo build --workspace --release --locked --verbose
       - name: Test
         run: cargo nextest run --workspace --release --locked
-      - name: Upload build [-nix]
-        if: (matrix.os != 'windows-latest') && (matrix.rust-version == 'stable')
-        uses: actions/upload-artifact@v3
+      - uses: ./.github/actions/upload-artifact
+        if: matrix.rust-version == 'stable'
         with:
           name: release build ${{ matrix.os }}
-          path: target/release/pexshell
-          retention-days: 7
-          if-no-files-found: error
-      - name: Upload build [Windows]
-        if: (matrix.os == 'windows-latest') && (matrix.rust-version == 'stable')
-        uses: actions/upload-artifact@v3
-        with:
-          name: release build ${{ matrix.os }}
-          path: target/release/pexshell.exe
-          retention-days: 7
-          if-no-files-found: error
+          path-nix: target/release/pexshell
+          path-windows: target/release/pexshell.exe
