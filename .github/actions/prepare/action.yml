@@ -64,12 +64,12 @@ runs:
       run: rustc --version && cargo --version
       shell: bash
     - name: Install dependencies
-      run: |
-        if [[ $crates != "" ]]; then cargo install ${crates//,/ }; fi
+      if: inputs.cargo-install != ''
+      run: cargo install ${crates//,/ }
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
     - name: "Install musl"
-      run: |
-        if [[ $(command -v apt-get) ]]; then sudo apt-get install -y musl musl-dev musl-tools; fi
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y musl musl-dev musl-tools
       shell: bash
