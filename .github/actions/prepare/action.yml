@@ -60,9 +60,8 @@ runs:
       run: rustc --version && cargo --version
       shell: bash
     - name: Install dependencies
-      if: inputs.cargo-install != ""
       run: |
-        cargo install ${crates//,/ }
+        [ $crates != "" ] || cargo install ${crates//,/ }
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
