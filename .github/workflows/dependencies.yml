@@ -33,7 +33,7 @@ jobs:
       - name: Check for banned and duplicated dependencies
         run: cargo deny check bans
 
-  licenses:
+  licences:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -44,12 +44,12 @@ jobs:
           cache-id: nobuild
           cargo-install: cargo-about
       - name: Generate license summary
-        run: cargo about generate about.hbs > licenses.html
+        run: cargo about generate about.hbs > licences.html
       - name: Upload test report
         uses: actions/upload-artifact@v3
         with:
-          name: licenses
-          path: licenses.html
+          name: third-party-licences
+          path: licences.html
           retention-days: 30
 
   sources:

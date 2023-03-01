@@ -34,8 +34,8 @@ jobs:
       - uses: ./.github/actions/upload-artifact
         with:
           artifact-name: ${{ matrix.target }}
-          path-nix: target/release/${{ matrix.target }}/pexshell
-          path-windows: target/release/${{ matrix.target }}/pexshell.exe
+          path-nix: target/${{ matrix.target }}/release/pexshell
+          path-windows: target/${{ matrix.target }}/release/pexshell.exe
      
   cross:
     strategy:
@@ -60,5 +60,5 @@ jobs:
       - uses: ./.github/actions/upload-artifact
         with:
           artifact-name: ${{ matrix.target }}
-          path-nix: target/release/${{ matrix.target }}/pexshell
-          path-windows: target/release/${{ matrix.target }}/pexshell.exe
+          path-nix: target/${{ matrix.target }}/release/pexshell
+          path-windows: target/${{ matrix.target }}/release/pexshell.exe
