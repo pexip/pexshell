@@ -409,11 +409,13 @@ fn parse_arg_to_json(args: &ArgMatches, name: &str, field: &Field) -> Option<Val
 mod tests {
     use std::collections::{HashMap, HashSet};
 
+    use clap::error::ErrorKind::InvalidSubcommand;
     use clap::{arg, Command};
     use lib::mcu::schema::{Endpoint, Field, Methods, Type};
+    use lib::mcu::Api;
     use serde_json::json;
 
-    use super::{create_patch_payload, create_post_payload};
+    use super::{create_patch_payload, create_post_payload, generate_subcommands};
 
     #[test]
     fn test_basic_create_post_payload() {
@@ -530,6 +532,52 @@ mod tests {
                 "field_1": "test 1",
                 "field_2": "test 2"
             })
+        );
+    }
+
+    #[test]
+    fn test_allowed_methods() {
+        // Arrange
+        let endpoint = Endpoint {
+            allowed_detail_http_methods: HashSet::from([Methods::Get, Methods::Delete]),
+            allowed_list_http_methods: HashSet::default(),
+            default_limit: 10,
+            fields: HashMap::new(),
+            filtering: HashMap::new(),
+            ordering: Vec::new(),
+        };
+        let schemas = HashMap::from([(
+            Api::Status,
+            HashMap::from([(String::from("conference"), endpoint)]),
+        )]);
+
+        // Act
+        let command = Command::new("Test").subcommands(generate_subcommands(&schemas));
+
+        // Assert
+        command
+            .clone()
+            .try_get_matches_from(["test", "status", "conference", "get"])
+            .unwrap();
+        command
+            .clone()
+            .try_get_matches_from(["test", "status", "conference", "delete", "1"])
+            .unwrap();
+        assert_eq!(
+            command
+                .clone()
+                .try_get_matches_from(["test", "status", "conference", "post"])
+                .unwrap_err()
+                .kind(),
+            InvalidSubcommand
+        );
+        assert_eq!(
+            command
+                .clone()
+                .try_get_matches_from(["test", "status", "conference", "patch", "1"])
+                .unwrap_err()
+                .kind(),
+            InvalidSubcommand
         );
     }
 }
