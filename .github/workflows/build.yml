@@ -26,7 +26,7 @@ jobs:
         run: cargo nextest run --workspace --release --locked
       - uses: ./.github/actions/upload-artifact
         with:
-          name: release build ${{ matrix.os }}
+          artifact-name: release build ${{ matrix.os }}
           path-nix: target/release/pexshell
           path-windows: target/release/pexshell.exe
      
