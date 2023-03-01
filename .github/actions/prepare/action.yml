@@ -29,7 +29,7 @@ runs:
     - id: vars
       run: |
         echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-        echo "CRATES_HASH=$(echo $crates | tr ',' '\n' | sort | sha256sum | cut -d " " -f 1)" >> $GITHUB_OUTPUT
+        echo "CRATES_HASH=$(echo $crates | tr ',' '\n' | sort | shasum -a 256 | cut -d " " -f 1)" >> $GITHUB_OUTPUT
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
