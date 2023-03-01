@@ -11,11 +11,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: x86_64-unknown-linux-musl
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-          - name: x86_64-apple-darwin
+          - target: x86_64-apple-darwin
             os: macos-latest
-          - name: x86_64-pc-windows-msvc
+          - target: x86_64-pc-windows-msvc
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -26,24 +26,24 @@ jobs:
         with:
           cache-id: release-build
           cargo-install: cargo-nextest
-          rust-targets: ${{ matrix.name }}
+          rust-targets: ${{ matrix.target }}
       - name: Build
-        run: cargo build --workspace --release --locked --verbose --target ${{ matrix.name }}
+        run: cargo build --workspace --release --locked --verbose --target ${{ matrix.target }}
       - name: Test
-        run: cargo nextest run --workspace --release --locked --target ${{ matrix.name }}
+        run: cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
       - uses: ./.github/actions/upload-artifact
         with:
-          artifact-name: ${{ matrix.name }}
-          path-nix: target/release/pexshell
-          path-windows: target/release/pexshell.exe
+          artifact-name: ${{ matrix.target }}
+          path-nix: target/release/${{ matrix.target }}/pexshell
+          path-windows: target/release/${{ matrix.target }}/pexshell.exe
      
   cross:
     strategy:
       matrix:
         include:
-          - name: aarch64-unknown-linux-musl
+          - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
-          - name: aarch64-apple-darwin
+          - target: aarch64-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -52,13 +52,13 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: release-build-${{ matrix.name }}
+          cache-id: release-build-${{ matrix.target }}
           cargo-install: cross
-          rust-targets: ${{ matrix.name }}
+          rust-targets: ${{ matrix.target }}
       - name: Build
-        run: cross build --workspace --release --locked --verbose --target ${{ matrix.name }}
+        run: cross build --workspace --release --locked --verbose --target ${{ matrix.target }}
       - uses: ./.github/actions/upload-artifact
         with:
-          artifact-name: ${{ matrix.name }}
-          path-nix: target/release/pexshell
-          path-windows: target/release/pexshell.exe
+          artifact-name: ${{ matrix.target }}
+          path-nix: target/release/${{ matrix.target }}/pexshell
+          path-windows: target/release/${{ matrix.target }}/pexshell.exe
