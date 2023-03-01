@@ -29,6 +29,7 @@ runs:
     - name: Calculate vars
       id: vars
       run: |
+        # python3 on linux. python2 on macos
         import os
         from datetime import datetime
         from hashlib import sha256
