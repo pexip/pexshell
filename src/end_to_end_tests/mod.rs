@@ -8,6 +8,8 @@ use httptest::{
 use serde_json::json;
 use test_helpers::{get_test_context, has_credentials};
 
+use crate::test_util::TestContextExtensions;
+
 mod configuration_helpers;
 
 mod cache;
@@ -90,8 +92,7 @@ fn basic_get() {
                 .map(String::from)
                 .collect::<Vec<_>>(),
             HashMap::default(),
-            test_context.get_config_dir(),
-            test_context.get_cache_dir(),
+            &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
         ))
         .unwrap();

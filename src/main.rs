@@ -13,9 +13,10 @@ mod consts;
 #[cfg(test)]
 mod end_to_end_tests;
 mod pexshell;
+#[cfg(test)]
+mod test_util;
 
 use clap::ArgMatches;
-#[cfg(test)]
 use cli::Console;
 use git_version::git_version;
 use is_terminal::IsTerminal;
@@ -30,7 +31,7 @@ use parking_lot::RwLock;
 use serde_json::Value;
 #[cfg(unix)]
 use simple_signal::Signal;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 use tokio::io::AsyncReadExt;
 
 #[cfg(unix)]
@@ -196,6 +197,23 @@ fn set_abort_on_interrupt(abort_on_interrupt: bool) {
     *ABORT_ON_INTERRUPT.write() = abort_on_interrupt;
 }
 
+pub struct Directories {
+    pub config_dir: PathBuf,
+    pub cache_dir: PathBuf,
+    pub tmp_dir: PathBuf,
+}
+
+impl Default for Directories {
+    fn default() -> Self {
+        let base_dirs = directories::BaseDirs::new().expect("could not find user base directories");
+        Self {
+            config_dir: base_dirs.config_dir().join("pexip/pexshell"),
+            cache_dir: base_dirs.cache_dir().join("pexip/pexshell"),
+            tmp_dir: std::env::temp_dir().join("pexip/pexshell"),
+        }
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     lazy_static! {
@@ -217,7 +235,15 @@ async fn main() {
 
     let args: Vec<String> = std::env::args().collect();
     let is_stderr_interactive = std::io::stderr().is_terminal();
-    let mut pexshell = pexshell::PexShell::default();
+    let dirs = Directories::default();
+
+    let stdout = std::io::stdout();
+    let is_stdout_interactive = stdout.is_terminal();
+    let console = Console::new(is_stdout_interactive, stdout);
+
+    let env: HashMap<String, String> = std::env::vars().collect();
+
+    let mut pexshell = pexshell::PexShell::new(&dirs, console, env);
     let result = pexshell.run(args).await;
 
     if let Err(e) = result {
@@ -235,15 +261,9 @@ async fn main() {
 pub async fn run_with(
     args: &[String],
     env: HashMap<String, String>,
-    config_dir: &std::path::Path,
-    cache_dir: &std::path::Path,
+    dirs: &Directories,
     stdout_wrapper: impl std::io::Write + 'static,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut pexshell = pexshell::PexShell::new(
-        config_dir,
-        cache_dir,
-        Console::new(false, stdout_wrapper),
-        env,
-    );
+    let mut pexshell = pexshell::PexShell::new(dirs, Console::new(false, stdout_wrapper), env);
     pexshell.run(args.to_vec()).await
 }

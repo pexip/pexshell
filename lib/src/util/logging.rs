@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::{fs::File, io::Write};
 
 use chrono::{SecondsFormat, Utc};
@@ -21,7 +22,7 @@ pub struct SimpleLogger {
 }
 
 impl SimpleLogger {
-    pub fn new(log_file: Option<String>) -> std::io::Result<Self> {
+    pub fn new(log_file: Option<PathBuf>) -> std::io::Result<Self> {
         let log = match log_file {
             None => None,
             Some(path) => Some(
@@ -49,14 +50,16 @@ impl SimpleLogger {
     ///
     /// # Panics
     /// Will panic if writing to a log file fails.
-    pub fn set_log_file(&self, log_file: Option<String>) -> std::io::Result<()> {
+    pub fn set_log_file(&self, log_file: Option<PathBuf>) -> std::io::Result<()> {
         {
             let mut config = self.config.lock();
             if let Some(ref mut log) = config.log_file {
                 let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
                 let message = log_file.as_ref().map_or_else(
                     || String::from("Logging has been switched off"),
-                    |path| format!("Log file changed - subsequent logs will be written to: {path}"),
+                    |path| {
+                        format!("Log file changed - subsequent logs will be written to: {path:?}")
+                    },
                 );
                 log.write_all(format!("{timestamp} --- {message}\n",).as_bytes())
                     .expect("writing to log file failed");
@@ -143,11 +146,7 @@ mod tests {
 
     #[test]
     fn test_simple_logger() {
-        let log_path = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
+        let log_path = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
         let logger = SimpleLogger::new(Some(log_path.clone())).unwrap();
         logger.set_max_level(LevelFilter::Info);
         let record_1 = &Record::builder()
@@ -184,11 +183,7 @@ mod tests {
     #[test_case(LevelFilter::Debug, 4)]
     #[test_case(LevelFilter::Trace, 5)]
     fn test_log_level_limit(max_level: LevelFilter, log_count: usize) {
-        let log_path = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
+        let log_path = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
         let logger = SimpleLogger::new(Some(log_path.clone())).unwrap();
         logger.set_max_level(max_level);
 
@@ -251,11 +246,7 @@ mod tests {
 
     #[test]
     fn create_without_file_test() {
-        let log_path = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
+        let log_path = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
         let logger = SimpleLogger::new(None).unwrap();
         logger.set_max_level(LevelFilter::Info);
         let record_0 = &Record::builder()
@@ -296,16 +287,8 @@ mod tests {
 
     #[test]
     fn change_log_file_test() {
-        let log_path_1 = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
-        let log_path_2 = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
+        let log_path_1 = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
+        let log_path_2 = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
         let logger = SimpleLogger::new(Some(log_path_1.clone())).unwrap();
         logger.set_max_level(LevelFilter::Info);
         let record_0 = &Record::builder()
@@ -338,11 +321,8 @@ mod tests {
         );
         assert_eq!(
             logs.next().unwrap().split_once("Z --- ").unwrap().1,
-            format!(
-                "Log file changed - subsequent logs will be written to: {}",
-                &log_path_2
-            )
-            .as_str()
+            format!("Log file changed - subsequent logs will be written to: {log_path_2:?}")
+                .as_str()
         );
         assert!(logs.next().is_none());
 
@@ -381,11 +361,7 @@ mod tests {
     #[test_case("other::thing", Level::Debug, cfg!(feature = "all_logs"))]
     fn test_module_path_filter(module_path: &str, level: Level, should_log: bool) {
         // Arrange
-        let log_path = std::env::temp_dir()
-            .join(format!("pexshell-test-log-{}", Uuid::new_v4()))
-            .to_str()
-            .unwrap()
-            .to_string();
+        let log_path = std::env::temp_dir().join(format!("pexshell-test-log-{}", Uuid::new_v4()));
         let logger = SimpleLogger::new(Some(log_path.clone())).unwrap();
         logger.set_max_level(LevelFilter::Debug);
 

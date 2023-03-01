@@ -9,8 +9,11 @@ use httptest::{
 use serde_json::json;
 use test_helpers::get_test_context;
 
-use crate::end_to_end_tests::configuration_helpers::{
-    configure_config_test_user, configure_schemas_configuration_conference_only,
+use crate::{
+    end_to_end_tests::configuration_helpers::{
+        configure_config_test_user, configure_schemas_configuration_conference_only,
+    },
+    test_util::TestContextExtensions,
 };
 
 #[test]
@@ -44,8 +47,7 @@ fn patch_conference_config() {
             ]
             .map(String::from),
             HashMap::default(),
-            test_context.get_config_dir(),
-            test_context.get_cache_dir(),
+            &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
         ))
         .unwrap();

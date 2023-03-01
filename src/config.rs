@@ -2,6 +2,7 @@ use crate::consts::{
     ENV_LOG_FILE, ENV_LOG_LEVEL, ENV_LOG_TO_STDERR, ENV_USER_ADDRESS, ENV_USER_PASSWORD,
     ENV_USER_USERNAME,
 };
+use crate::Directories;
 use crate::{cli::Console, error};
 use fd_lock::{RwLock, RwLockWriteGuard};
 use lib::util::SensitiveString;
@@ -9,6 +10,7 @@ use log::debug;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
+use std::path::PathBuf;
 use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
 
 #[cfg(test)]
@@ -24,7 +26,7 @@ pub struct User {
 
 #[cfg_attr(test, automock)]
 pub trait Provider {
-    fn get_log_file(&self) -> Option<String>;
+    fn get_log_file(&self) -> Option<PathBuf>;
 
     fn get_log_level(&self) -> Option<String>;
 
@@ -50,17 +52,31 @@ pub trait Provider {
     fn get_current_user<'a>(&'a self) -> Option<&'a User>;
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Logging {
-    file: Option<String>,
+    file: Option<PathBuf>,
     level: Option<String>,
     stderr: Option<bool>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     log: Option<Logging>,
     users: Vec<User>,
+}
+
+impl Config {
+    pub fn new(dirs: &Directories) -> Self {
+        let log_file_path = dirs.tmp_dir.join("pexshell.log");
+        Self {
+            log: Some(Logging {
+                file: Some(log_file_path),
+                level: None,
+                stderr: None,
+            }),
+            users: Vec::new(),
+        }
+    }
 }
 
 pub struct Manager<'a> {
@@ -218,10 +234,10 @@ impl<'a> Manager<'a> {
 }
 
 impl Provider for Manager<'_> {
-    fn get_log_file(&self) -> Option<String> {
-        self.env.get(ENV_LOG_FILE).cloned().map_or_else(
+    fn get_log_file(&self) -> Option<PathBuf> {
+        self.env.get(ENV_LOG_FILE).map_or_else(
             || self.config.log.as_ref().and_then(|l| l.file.clone()),
-            Some,
+            |s| Some(PathBuf::from(s)),
         )
     }
 
@@ -557,7 +573,7 @@ mod tests {
 
         assert_eq!(
             config.log.as_ref().and_then(|l| l.file.as_deref()),
-            Some("/path/to/some/pexshell.log")
+            Some(Path::new("/path/to/some/pexshell.log"))
         );
         assert_eq!(
             config.log.as_ref().and_then(|l| l.level.as_deref()),
@@ -571,7 +587,7 @@ mod tests {
         let test_context = get_test_context();
         let config = Config {
             log: Some(Logging {
-                file: Some(String::from("/path/to/some/pexshell.log")),
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
                 level: Some(String::from("debug")),
                 stderr: None,
             }),
@@ -678,7 +694,7 @@ current_user = true
         let test_context = get_test_context();
         let config = Config {
             log: Some(Logging {
-                file: Some(String::from("/path/to/some/pexshell.log")),
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
                 level: Some(String::from("debug")),
                 stderr: None,
             }),
