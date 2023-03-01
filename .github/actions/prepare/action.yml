@@ -69,3 +69,7 @@ runs:
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
+    - name: "Install musl"
+      if: ${{ runner.os }} == "Linux"
+      run: sudo apt-get install -y musl musl-dev musl-tools
+      shell: bash
