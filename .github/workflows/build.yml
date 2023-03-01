@@ -7,11 +7,10 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo-build:
+  build-native:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust-version: [1.64.0, stable]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -20,15 +19,14 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: release-build
-          rust-version: ${{ matrix.rust-version }}
           cargo-install: cargo-nextest
       - name: Build
         run: cargo build --workspace --release --locked --verbose
       - name: Test
         run: cargo nextest run --workspace --release --locked
       - uses: ./.github/actions/upload-artifact
-        if: matrix.rust-version == 'stable'
         with:
           name: release build ${{ matrix.os }}
           path-nix: target/release/pexshell
           path-windows: target/release/pexshell.exe
+     
