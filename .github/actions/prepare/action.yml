@@ -26,7 +26,8 @@ runs:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
         targets: ${{ inputs.rust-targets }}
-    - id: vars
+    - name: Calculate vars
+      id: vars
       run: |
         import os
         from datetime import datetime
@@ -41,7 +42,7 @@ runs:
             github_output.write(f"CRATES_HASH={crates_hash}\n")
       env:
         crates: ${{ inputs.cargo-install }}
-      shell: python
+      shell: python3
     - uses: actions/cache@v3
       with:
         path: |
