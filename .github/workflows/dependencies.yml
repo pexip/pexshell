@@ -7,7 +7,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check-advisories:
+  advisories:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,7 +20,7 @@ jobs:
       - name: Check for security advisories and unmaintained crates
         run: cargo deny check advisories
 
-  check-bans:
+  bans:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -33,7 +33,7 @@ jobs:
       - name: Check for banned and duplicated dependencies
         run: cargo deny check bans
 
-  check-licenses:
+  licenses:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -52,7 +52,7 @@ jobs:
           path: licenses.html
           retention-days: 30
 
-  check-sources:
+  sources:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

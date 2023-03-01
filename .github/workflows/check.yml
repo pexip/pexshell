@@ -7,18 +7,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo-fmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/prepare
-        with:
-          cache-id: nobuild
-      - name: Check formatting
-        run: rustc --version && cargo --version && cargo fmt --all --check
-
   clippy:
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +19,19 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --locked --tests
 
-  cargo-sort:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: nobuild
+      - name: Check formatting
+        run: rustc --version && cargo --version && cargo fmt --all --check
+
+  sort:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
