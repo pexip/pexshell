@@ -28,11 +28,20 @@ runs:
         targets: ${{ inputs.rust-targets }}
     - id: vars
       run: |
-        echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-        echo "CRATES_HASH=$(echo $crates | tr ',' '\n' | sort | shasum -a 256 | cut -d " " -f 1)" >> $GITHUB_OUTPUT
+        import os
+        from datetime import datetime
+        from hashlib import sha256
+
+        with open(os.environ["GITHUB_OUTPUT"], "a") as github_output:
+            current_date = datetime.today().strftime('%Y-%m-%d')
+            github_output.write(f"CURRENT_DATE={current_date}\n")
+
+            crates = sorted(os.environ["crates"].split(","))
+            crates_hash = sha256("\n".join(crates).encode()).hexdigest()
+            github_output.write(f"CRATES_HASH={crates_hash}\n")
       env:
         crates: ${{ inputs.cargo-install }}
-      shell: bash
+      shell: python
     - uses: actions/cache@v3
       with:
         path: |
