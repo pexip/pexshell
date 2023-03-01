@@ -11,6 +11,9 @@ inputs:
   rust-components:
     description: Comma-separated list of components to be additionally installed
     required: false
+  cargo-install:
+    description: Comma-separated list of crates to cargo install
+    required: false
 runs:
   using: "composite"
   steps:
@@ -26,15 +29,21 @@ runs:
     - uses: actions/cache@v3
       with:
         path: |
-          ~/.cargo/bin/
           ~/.cargo/registry/index/
+        key: regindex-${{ runner.os }}-${{ steps.current-date.outputs.CURRENT_DATE }}
+        restore-keys: |
+          regindex-${{ runner.os }}-
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
-        key: deps-${{ runner.os }}-${{ inputs.cache-id }}-${{ steps.current-date.outputs.CURRENT_DATE }}
+        key: deps-${{ runner.os }}-${{ inputs.cargo-install }}-${{ steps.current-date.outputs.CURRENT_DATE }}
         restore-keys: |
-          deps-${{ runner.os }}-${{ inputs.cache-id }}-
+          deps-${{ runner.os }}-${{ inputs.cargo-install }}-
     - uses: actions/cache@v3
       with:
         path: |
@@ -46,4 +55,11 @@ runs:
       shell: bash
     - name: "Display rust and cargo version"
       run: rustc --version && cargo --version
+      shell: bash
+    - name: Install dependencies
+      if: ${{ inputs.cargo-install }} != ""
+      run: |
+        cargo install ${crates//,/ }
+      env:
+        crates: ${{ inputs.cargo-install }}
       shell: bash

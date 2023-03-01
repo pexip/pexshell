@@ -19,10 +19,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-build
+          cache-id: release-build
           rust-version: ${{ matrix.rust-version }}
-      - name: Install dependencies
-        run: cargo install cargo-nextest
+          cargo-install: cargo-nextest
       - name: Build
         run: cargo build --workspace --release --locked --verbose
       - name: Test

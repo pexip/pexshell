@@ -15,9 +15,8 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Check for security advisories and unmaintained crates
         run: cargo deny check advisories
 
@@ -29,9 +28,8 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Check for banned and duplicated dependencies
         run: cargo deny check bans
 
@@ -43,9 +41,8 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-about
-      - name: Install cargo-about
-        run: cargo install cargo-about
+          cache-id: nobuild
+          cargo-install: cargo-about
       - name: Generate license summary
         run: cargo about generate about.hbs > licenses.html
       - name: Upload test report
@@ -63,8 +60,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Checked for unauthorized crate sources
         run: cargo deny check sources

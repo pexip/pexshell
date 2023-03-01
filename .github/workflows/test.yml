@@ -15,11 +15,10 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-coverage
+          cache-id: debug-build
           rust-version: nightly
           rust-components: llvm-tools-preview
-      - name: Install dependencies
-        run: cargo install cargo-nextest cargo-llvm-cov
+          cargo-install: cargo-nextest,cargo-llvm-cov
       - name: Run tests
         run: cargo llvm-cov --workspace --locked nextest --html --features ci
       - name: Upload test report
