@@ -35,14 +35,14 @@ runs:
 
         with open(os.environ["GITHUB_OUTPUT"], "a") as github_output:
             current_date = datetime.today().strftime('%Y-%m-%d')
-            github_output.write(f"CURRENT_DATE={current_date}\n")
+            github_output.write("CURRENT_DATE={}\n".format(current_date))
 
             crates = sorted(os.environ["crates"].split(","))
             crates_hash = sha256("\n".join(crates).encode()).hexdigest()
-            github_output.write(f"CRATES_HASH={crates_hash}\n")
+            github_output.write("CRATES_HASH={}\n".format(crates_hash))
       env:
         crates: ${{ inputs.cargo-install }}
-      shell: python3
+      shell: python
     - uses: actions/cache@v3
       with:
         path: |
