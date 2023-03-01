@@ -7,7 +7,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo-coverage:
+  coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,11 +15,10 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-coverage
+          cache-id: debug-build
           rust-version: nightly
           rust-components: llvm-tools-preview
-      - name: Install dependencies
-        run: cargo install cargo-nextest cargo-llvm-cov
+          cargo-install: cargo-nextest,cargo-llvm-cov
       - name: Run tests
         run: cargo llvm-cov --workspace --locked nextest --html --features ci
       - name: Upload test report
@@ -36,3 +35,22 @@ jobs:
           name: coverage
           path: target/llvm-cov/
           retention-days: 30
+
+  msrv:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare
+        with:
+          cache-id: debug-build
+          rust-version: 1.64.0
+          cargo-install: cargo-nextest
+      - name: Build
+        run: cargo build --workspace --locked --verbose
+      - name: Test
+        run: cargo nextest run --workspace --locked   

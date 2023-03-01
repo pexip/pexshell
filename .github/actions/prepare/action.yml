@@ -9,7 +9,13 @@ inputs:
     required: false
     default: "stable"
   rust-components:
-    description: Comma-separated list of components to be additionally installed
+    description: Comma-separated string of components to be additionally installed
+    required: false
+  rust-targets:
+    description: Comma-separated string of additional targets to install
+    required: false
+  cargo-install:
+    description: Comma-separated list of crates to cargo install
     required: false
 runs:
   using: "composite"
@@ -19,22 +25,32 @@ runs:
       with:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
-    - name: Get current date
-      id: current-date
-      run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        targets: ${{ inputs.rust-targets }}
+    - id: vars
+      run: |
+        echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        echo "CRATES_HASH=$(echo $crates | tr ',' '\n' | sort | sha256sum | cut -d " " -f 1)" >> $GITHUB_OUTPUT
+      env:
+        crates: ${{ inputs.cargo-install }}
       shell: bash
     - uses: actions/cache@v3
       with:
         path: |
-          ~/.cargo/bin/
           ~/.cargo/registry/index/
+        key: regindex-${{ runner.os }}-${{ steps.vars.outputs.CURRENT_DATE }}
+        restore-keys: |
+          regindex-${{ runner.os }}-
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
-        key: deps-${{ runner.os }}-${{ inputs.cache-id }}-${{ steps.current-date.outputs.CURRENT_DATE }}
+        key: deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-${{ steps.vars.outputs.CURRENT_DATE }}
         restore-keys: |
-          deps-${{ runner.os }}-${{ inputs.cache-id }}-
+          deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-
     - uses: actions/cache@v3
       with:
         path: |
@@ -46,4 +62,14 @@ runs:
       shell: bash
     - name: "Display rust and cargo version"
       run: rustc --version && cargo --version
+      shell: bash
+    - name: Install dependencies
+      if: inputs.cargo-install != ''
+      run: cargo install ${crates//,/ }
+      env:
+        crates: ${{ inputs.cargo-install }}
+      shell: bash
+    - name: "Install musl"
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y musl musl-dev musl-tools
       shell: bash

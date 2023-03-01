@@ -7,7 +7,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check-advisories:
+  advisories:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,13 +15,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Check for security advisories and unmaintained crates
         run: cargo deny check advisories
 
-  check-bans:
+  bans:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -29,13 +28,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Check for banned and duplicated dependencies
         run: cargo deny check bans
 
-  check-licenses:
+  licences:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -43,19 +41,18 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-about
-      - name: Install cargo-about
-        run: cargo install cargo-about
+          cache-id: nobuild
+          cargo-install: cargo-about
       - name: Generate license summary
-        run: cargo about generate about.hbs > licenses.html
+        run: cargo about generate about.hbs > licences.html
       - name: Upload test report
         uses: actions/upload-artifact@v3
         with:
-          name: licenses
-          path: licenses.html
+          name: third-party-licences
+          path: licences.html
           retention-days: 30
 
-  check-sources:
+  sources:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -63,8 +60,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: cargo-deny
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
+          cache-id: nobuild
+          cargo-install: cargo-deny
       - name: Checked for unauthorized crate sources
         run: cargo deny check sources
