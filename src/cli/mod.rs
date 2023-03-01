@@ -6,6 +6,7 @@ use std::io::Write;
 use clap::{ArgAction, ArgMatches, Command};
 use colored_json::to_colored_json_auto as to_coloured_json_auto;
 use lazy_static::lazy_static;
+use lib::mcu::schema::Methods::{Delete, Get, Patch, Post, Put};
 use lib::mcu::{
     schema::{Endpoint, Field, Type},
     Api,
@@ -131,73 +132,78 @@ fn generate_parser_for_field(
 }
 
 fn generate_endpoint_subcommand(name: &str, endpoint: &Endpoint) -> clap::Command {
-    clap::Command::new(String::from(name))
-        .subcommand(
-            clap::Command::new("get")
-                .arg(
-                    clap::Arg::new("object_id")
-                        .action(ArgAction::Set)
-                        .conflicts_with_all(["limit", "page_size", "stream"]),
-                )
-                .arg(
-                    clap::Arg::new("limit")
-                        .long("limit")
-                        .action(ArgAction::Set)
-                        .default_value("0")
-                        .value_parser(clap::value_parser!(usize)),
-                )
-                .arg(
-                    clap::Arg::new("page_size")
-                        .long("page_size")
-                        .action(ArgAction::Set)
-                        .default_value("500")
-                        .value_parser(clap::value_parser!(usize)),
-                )
-                .arg(
-                    clap::Arg::new("stream")
-                        .long("stream")
-                        .action(ArgAction::SetTrue),
-                )
-                .args(endpoint.fields.iter().flat_map(|(name, field)| {
-                    generate_get_field_args(
-                        name,
-                        field,
-                        endpoint.filtering.get(name).unwrap_or(&Vec::new()),
+    let mut command = clap::Command::new(String::from(name));
+    for method in &endpoint.allowed_detail_http_methods {
+        command = match method {
+            Get => command.subcommand(
+                clap::Command::new("get")
+                    .arg(
+                        clap::Arg::new("object_id")
+                            .action(ArgAction::Set)
+                            .conflicts_with_all(["limit", "page_size", "stream"]),
                     )
-                })),
-        )
-        .subcommand(
-            clap::Command::new("delete").arg(
-                clap::Arg::new("object_id")
-                    .required(true)
-                    .action(ArgAction::Set),
+                    .arg(
+                        clap::Arg::new("limit")
+                            .long("limit")
+                            .action(ArgAction::Set)
+                            .default_value("0")
+                            .value_parser(clap::value_parser!(usize)),
+                    )
+                    .arg(
+                        clap::Arg::new("page_size")
+                            .long("page_size")
+                            .action(ArgAction::Set)
+                            .default_value("500")
+                            .value_parser(clap::value_parser!(usize)),
+                    )
+                    .arg(
+                        clap::Arg::new("stream")
+                            .long("stream")
+                            .action(ArgAction::SetTrue),
+                    )
+                    .args(endpoint.fields.iter().flat_map(|(name, field)| {
+                        generate_get_field_args(
+                            name,
+                            field,
+                            endpoint.filtering.get(name).unwrap_or(&Vec::new()),
+                        )
+                    })),
             ),
-        )
-        .subcommand(
-            clap::Command::new("post").args(
-                &endpoint
-                    .fields
-                    .iter()
-                    .filter_map(|(name, field)| generate_post_field_arg(name, field))
-                    .collect::<Vec<clap::Arg>>(),
-            ),
-        )
-        .subcommand(
-            clap::Command::new("patch")
-                .arg(
+            Delete => command.subcommand(
+                clap::Command::new("delete").arg(
                     clap::Arg::new("object_id")
                         .required(true)
                         .action(ArgAction::Set),
-                )
-                .args(
+                ),
+            ),
+            Post => command.subcommand(
+                clap::Command::new("post").args(
                     &endpoint
                         .fields
                         .iter()
-                        .filter_map(|(name, field)| generate_patch_field_arg(name, field))
+                        .filter_map(|(name, field)| generate_post_field_arg(name, field))
                         .collect::<Vec<clap::Arg>>(),
                 ),
-        )
-        .subcommand_required(true)
+            ),
+            Patch => command.subcommand(
+                clap::Command::new("patch")
+                    .arg(
+                        clap::Arg::new("object_id")
+                            .required(true)
+                            .action(ArgAction::Set),
+                    )
+                    .args(
+                        &endpoint
+                            .fields
+                            .iter()
+                            .filter_map(|(name, field)| generate_patch_field_arg(name, field))
+                            .collect::<Vec<clap::Arg>>(),
+                    ),
+            ),
+            Put => command,
+        }
+    }
+    command.subcommand_required(true)
 }
 
 fn generate_endpoint_subcommand_for_command_api(name: &str, endpoint: &Endpoint) -> clap::Command {
@@ -403,11 +409,13 @@ fn parse_arg_to_json(args: &ArgMatches, name: &str, field: &Field) -> Option<Val
 mod tests {
     use std::collections::{HashMap, HashSet};
 
+    use clap::error::ErrorKind::InvalidSubcommand;
     use clap::{arg, Command};
     use lib::mcu::schema::{Endpoint, Field, Methods, Type};
+    use lib::mcu::Api;
     use serde_json::json;
 
-    use super::{create_patch_payload, create_post_payload};
+    use super::{create_patch_payload, create_post_payload, generate_subcommands};
 
     #[test]
     fn test_basic_create_post_payload() {
@@ -524,6 +532,51 @@ mod tests {
                 "field_1": "test 1",
                 "field_2": "test 2"
             })
+        );
+    }
+
+    #[test]
+    fn test_allowed_methods() {
+        // Arrange
+        let endpoint = Endpoint {
+            allowed_detail_http_methods: HashSet::from([Methods::Get, Methods::Delete]),
+            allowed_list_http_methods: HashSet::default(),
+            default_limit: 10,
+            fields: HashMap::new(),
+            filtering: HashMap::new(),
+            ordering: Vec::new(),
+        };
+        let schemas = HashMap::from([(
+            Api::Status,
+            HashMap::from([(String::from("conference"), endpoint)]),
+        )]);
+
+        // Act
+        let command = Command::new("Test").subcommands(generate_subcommands(&schemas));
+
+        // Assert
+        command
+            .clone()
+            .try_get_matches_from(["test", "status", "conference", "get"])
+            .unwrap();
+        command
+            .clone()
+            .try_get_matches_from(["test", "status", "conference", "delete", "1"])
+            .unwrap();
+        assert_eq!(
+            command
+                .clone()
+                .try_get_matches_from(["test", "status", "conference", "post"])
+                .unwrap_err()
+                .kind(),
+            InvalidSubcommand
+        );
+        assert_eq!(
+            command
+                .try_get_matches_from(["test", "status", "conference", "patch", "1"])
+                .unwrap_err()
+                .kind(),
+            InvalidSubcommand
         );
     }
 }
