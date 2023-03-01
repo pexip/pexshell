@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
         with:
-          cache-id: release-build
+          cache-id: release-build-${{ matrix.target }}
           cargo-install: cargo-nextest
           rust-targets: ${{ matrix.target }}
       - name: Build
