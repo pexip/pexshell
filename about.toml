@@ -45,6 +45,12 @@ accepted = ["BSD-3-Clause"]
 [pexshell]
 accepted = ["BSD-3-Clause"]
 
+[pex_lib]
+accepted = ["BSD-3-Clause"]
+
+[test_helpers]
+accepted = ["BSD-3-Clause"]
+
 [ring]
 accepted = ["ISC", "OpenSSL"]
 
