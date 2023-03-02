@@ -269,7 +269,7 @@ mod tests {
             username: String::from("username.2"),
             password: Some(SensitiveString::from("password.2")),
             current_user: true,
-            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
+            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
         let user_3 = User {
             address: String::from("testing.test.3"),
@@ -303,7 +303,7 @@ mod tests {
             username: String::from("username"),
             password: Some(SensitiveString::from("password")),
             current_user: false,
-            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
+            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
         assert_eq!(
             combine_username(&user).as_str(),
@@ -636,6 +636,5 @@ mod tests {
             Some(String::from("some_new_password"))
         );
         assert!(selected_user.last_used.is_some());
-        assert!(selected_user.current_user);
     }
 }

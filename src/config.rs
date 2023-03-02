@@ -668,7 +668,7 @@ mod tests {
         assert!(config.users[1].current_user);
         assert_eq!(
             config.users[1].last_used,
-            Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap())
+            Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())
         );
 
         assert_eq!(
@@ -704,7 +704,7 @@ mod tests {
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
-                    last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
+                    last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
                 },
             ],
         };
@@ -903,12 +903,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -932,6 +934,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
@@ -976,12 +979,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -1014,6 +1019,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
@@ -1055,12 +1061,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -1093,6 +1101,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
