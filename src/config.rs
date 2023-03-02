@@ -2,8 +2,8 @@ use crate::consts::{
     ENV_LOG_FILE, ENV_LOG_LEVEL, ENV_LOG_TO_STDERR, ENV_USER_ADDRESS, ENV_USER_PASSWORD,
     ENV_USER_USERNAME,
 };
+use crate::error;
 use crate::Directories;
-use crate::{cli::Console, error};
 use fd_lock::{RwLock, RwLockWriteGuard};
 use lib::util::SensitiveString;
 use log::debug;
@@ -41,7 +41,11 @@ pub trait Provider {
     fn get_users(&self) -> &[User];
 
     /// Add a user to the users list.
-    fn add_user(&mut self, console: &mut Console, user: User) -> Result<(), error::UserFriendly>;
+    fn add_user(
+        &mut self,
+        user: User,
+        store_password_in_plaintext: bool,
+    ) -> Result<(), error::UserFriendly>;
 
     /// Removes a user from the users list.
     fn delete_user(&mut self, index: usize) -> Result<(), error::UserFriendly>;
@@ -338,11 +342,11 @@ impl Provider for Manager<'_> {
     /// Add a user to the users list.
     fn add_user(
         &mut self,
-        console: &mut Console,
         mut user: User,
+        store_password_in_plaintext: bool,
     ) -> Result<(), error::UserFriendly> {
         assert!(user.password.is_some(), "No password specified!");
-        if self.keyring.lock().available() {
+        if !store_password_in_plaintext {
             self.keyring
                 .lock()
                 .save(
@@ -355,17 +359,15 @@ impl Provider for Manager<'_> {
                         "could not save password to system credential store: {e}"
                     ))
                 })?;
-        } else {
-            console
-                .display_warning("Credential store unavailable - storing passwords in plaintext!");
         }
+
         self.config.users.push(user);
         Ok(())
     }
 
     fn delete_user(&mut self, index: usize) -> Result<(), error::UserFriendly> {
         let user = self.config.users.remove(index);
-        if user.password.is_none() && self.keyring.lock().available() {
+        if user.password.is_none() {
             self.keyring
                 .lock()
                 .delete(&user.address, &user.username)
@@ -403,8 +405,6 @@ mod credentials {
 
     #[cfg_attr(test, automock)]
     pub trait Provider {
-        /// Checks if the keyring service is available right now.
-        fn available(&self) -> bool;
         fn retrieve(&self, address: &str, username: &str) -> keyring::Result<SensitiveString>;
         fn save(
             &mut self,
@@ -419,19 +419,6 @@ mod credentials {
     pub struct Keyring {}
 
     impl Provider for Keyring {
-        fn available(&self) -> bool {
-            fn inner() -> keyring::Result<bool> {
-                // try to save, access and delete an entry.
-                const TEST_PASSWORD: &str = "test_password";
-                let entry = keyring::Entry::new(SERVICE, "AVAILABILITY CHECK")?;
-                entry.set_password(TEST_PASSWORD)?;
-                let password = entry.get_password()?;
-                entry.delete_password()?;
-                Ok(TEST_PASSWORD == password)
-            }
-            inner().unwrap_or(false)
-        }
-
         fn retrieve(&self, address: &str, username: &str) -> keyring::Result<SensitiveString> {
             let ident = format!("{username}@{address}");
             let entry = keyring::Entry::new(SERVICE, &ident)?;
@@ -459,6 +446,7 @@ mod credentials {
 
 #[cfg(test)]
 mod tests {
+    use mockall::predicate::{eq, function};
     use test_helpers::get_test_context;
 
     use super::*;
@@ -747,5 +735,228 @@ username = "a_user"
 current_user = true
 "#
         );
+    }
+
+    #[test]
+    pub fn test_add_user_with_plaintext_password() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let keyring = credentials::MockProvider::new();
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+        let new_user = User {
+            address: String::from("new_address.testing.com"),
+            username: String::from("a_new_user"),
+            password: Some(SensitiveString::from("some_new_password")),
+            current_user: false,
+        };
+
+        // Act
+        mgr.add_user(new_user, true).unwrap();
+
+        // Assert
+        let users = mgr.get_users();
+        assert_eq!(users.len(), 3);
+        assert_eq!(users[0].address, "test_address.test.com");
+        assert_eq!(users[0].username, "admin");
+        assert_eq!(
+            users[0].password.as_ref().unwrap().secret(),
+            "some_admin_password"
+        );
+        assert!(!users[0].current_user);
+        assert_eq!(users[1].address, "test_address.testing.com");
+        assert_eq!(users[1].username, "a_user");
+        assert!(users[1].password.is_none());
+        assert!(users[1].current_user);
+        assert_eq!(users[2].address, "new_address.testing.com");
+        assert_eq!(users[2].username, "a_new_user");
+        assert_eq!(
+            users[2].password.as_ref().unwrap().secret(),
+            "some_new_password"
+        );
+        assert!(!users[2].current_user);
+    }
+
+    #[test]
+    pub fn test_add_user_with_credential_store() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let mut keyring = credentials::MockProvider::new();
+        keyring
+            .expect_save()
+            .with(
+                eq("new_address.testing.com"),
+                eq("a_new_user"),
+                function(|s: &SensitiveString| s.secret() == "some_new_password"),
+            )
+            .once()
+            .return_once(|_, _, _| Ok(()));
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+        let new_user = User {
+            address: String::from("new_address.testing.com"),
+            username: String::from("a_new_user"),
+            password: Some(SensitiveString::from("some_new_password")),
+            current_user: false,
+        };
+
+        // Act
+        mgr.add_user(new_user, false).unwrap();
+
+        // Assert
+        let users = mgr.get_users();
+        assert_eq!(users.len(), 3);
+        assert_eq!(users[0].address, "test_address.test.com");
+        assert_eq!(users[0].username, "admin");
+        assert_eq!(
+            users[0].password.as_ref().unwrap().secret(),
+            "some_admin_password"
+        );
+        assert!(!users[0].current_user);
+        assert_eq!(users[1].address, "test_address.testing.com");
+        assert_eq!(users[1].username, "a_user");
+        assert!(users[1].password.is_none());
+        assert!(users[1].current_user);
+        assert_eq!(users[2].address, "new_address.testing.com");
+        assert_eq!(users[2].username, "a_new_user");
+        assert!(users[2].password.is_none());
+        assert!(!users[2].current_user);
+    }
+
+    #[test]
+    pub fn test_add_user_with_credential_store_fails() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let mut keyring = credentials::MockProvider::new();
+        keyring
+            .expect_save()
+            .with(
+                eq("new_address.testing.com"),
+                eq("a_new_user"),
+                function(|s: &SensitiveString| s.secret() == "some_new_password"),
+            )
+            .once()
+            .return_once(|_, _, _| Err(keyring::Error::NoEntry));
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+        let new_user = User {
+            address: String::from("new_address.testing.com"),
+            username: String::from("a_new_user"),
+            password: Some(SensitiveString::from("some_new_password")),
+            current_user: false,
+        };
+
+        // Act
+        let error = mgr.add_user(new_user, false).unwrap_err();
+
+        // Assert
+        assert_eq!(error.to_string(), "could not save password to system credential store: No matching entry found in secure storage");
+
+        let users = mgr.get_users();
+        assert_eq!(users.len(), 2);
+        assert_eq!(users[0].address, "test_address.test.com");
+        assert_eq!(users[0].username, "admin");
+        assert_eq!(
+            users[0].password.as_ref().unwrap().secret(),
+            "some_admin_password"
+        );
+        assert!(!users[0].current_user);
+        assert_eq!(users[1].address, "test_address.testing.com");
+        assert_eq!(users[1].username, "a_user");
+        assert!(users[1].password.is_none());
+        assert!(users[1].current_user);
     }
 }

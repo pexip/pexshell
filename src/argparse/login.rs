@@ -39,10 +39,16 @@ impl Login {
                     .help("Delete an account")
                     .action(ArgAction::SetTrue),
             )
+            .arg(
+                Arg::new("store_passwords_in_plaintext")
+                    .long("store_passwords_in_plaintext")
+                    .help("Stores passwords in plaintext instead of in the system credential store")
+                    .action(ArgAction::SetTrue),
+            )
             .group(
                 ArgGroup::new("function")
                     .args(["list", "delete"])
-                    .conflicts_with("offline"),
+                    .conflicts_with_all(["offline", "store_passwords_in_plaintext"]),
             )
     }
 
@@ -66,6 +72,7 @@ impl Login {
                     config,
                     client,
                     !login_sub.get_flag("offline"),
+                    login_sub.get_flag("store_passwords_in_plaintext"),
                 )
                 .await?;
 

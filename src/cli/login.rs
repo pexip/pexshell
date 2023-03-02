@@ -132,18 +132,23 @@ impl<Backend: Interact> Login<Backend> {
         config: &mut impl config::Provider,
         client: reqwest::Client,
         verify_credentials: bool,
+        store_password_in_plaintext: bool,
     ) -> Result<config::User, lib::error::UserFriendly> {
         let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
 
         if user_list.is_empty() {
-            println!("no stored api credentials found; add a new user to continue:");
+            writeln!(
+                console,
+                "no stored api credentials found; add a new user to continue:"
+            )
+            .unwrap();
             let user = self.input_user();
 
             if verify_credentials {
                 test_request(client, &user).await?;
             }
 
-            config.add_user(console, user.clone())?;
+            config.add_user(user.clone(), store_password_in_plaintext)?;
             Ok(user)
         } else {
             const ADD_A_USER_OPTION: &str = "add a user";
@@ -158,7 +163,7 @@ impl<Backend: Interact> Login<Backend> {
                     test_request(client, &user).await?;
                 }
 
-                config.add_user(console, user.clone())?;
+                config.add_user(user.clone(), store_password_in_plaintext)?;
                 Ok(user)
             } else {
                 Ok(config.get_users()[selection].clone())
@@ -368,7 +373,8 @@ mod tests {
                 &mut console,
                 &mut mock_config,
                 reqwest::Client::new(),
-                true, // selecting an existing user should *not* trigger verification
+                true,  // selecting an existing user should *not* trigger verification
+                false, // this option should *not* affect selecting a user
             ))
             .unwrap();
 
@@ -391,13 +397,14 @@ mod tests {
             .return_const(get_test_users());
         mock_config
             .expect_add_user()
-            .withf(|_, user: &User| {
+            .withf(|user: &User, plaintext| {
                 user.address == "testing.new"
                     && user.username == "some_new_username"
                     && user
                         .password
                         .as_ref()
                         .map_or(false, |s| s.secret() == "some_new_password")
+                    && *plaintext
             })
             .returning(|_, _| Ok(()));
         let out = VirtualFile::new();
@@ -447,6 +454,7 @@ mod tests {
                 &mut mock_config,
                 reqwest::Client::new(),
                 false,
+                true,
             ))
             .unwrap();
 
@@ -474,13 +482,14 @@ mod tests {
             let uri = uri.clone();
             mock_config
                 .expect_add_user()
-                .withf(move |_, user: &User| {
+                .withf(move |user: &User, plaintext| {
                     user.address == uri
                         && user.username == "some_new_username"
                         && user
                             .password
                             .as_ref()
                             .map_or(false, |s| s.secret() == "some_new_password")
+                        && !*plaintext
                 })
                 .returning(|_, _| Ok(()));
         }
@@ -552,6 +561,7 @@ mod tests {
                 &mut mock_config,
                 reqwest::Client::new(),
                 true,
+                false,
             ))
             .unwrap();
 
