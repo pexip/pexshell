@@ -26,9 +26,9 @@ runs:
         toolchain: ${{ inputs.rust-version }}
         components: ${{ inputs.rust-components }}
         targets: ${{ inputs.rust-targets }}
-    - name: Calculate vars
-      id: vars
+    - id: vars
       run: |
+        # calculate vars
         # python3 on linux. python2 on macos
         import os
         from datetime import datetime
@@ -41,6 +41,10 @@ runs:
             crates = sorted(os.environ["crates"].split(","))
             crates_hash = sha256("\n".join(crates).encode()).hexdigest()
             github_output.write("CRATES_HASH={}\n".format(crates_hash))
+
+        # print out output
+        with open(os.environ["GITHUB_OUTPUT"], "r") as github_output:
+            print(github_output.read())
       env:
         crates: ${{ inputs.cargo-install }}
       shell: python
