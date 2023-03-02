@@ -6,7 +6,6 @@ use crate::consts::{
 use crate::error;
 use crate::Directories;
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
-use fd_lock::{RwLock, RwLockWriteGuard};
 use fslock::LockFile;
 use lib::util::SensitiveString;
 use log::debug;

@@ -116,7 +116,6 @@ async fn test_request(
                 e => error::UserFriendly::new(e.to_string()),
             })?;
 
-            user.last_used = Some(chrono::offset::Utc::now());
             Ok(())
         }
         _ => panic!(),
@@ -148,20 +147,22 @@ impl<Backend: Interact> Login<Backend> {
     ) -> Result<config::User, lib::error::UserFriendly> {
         let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
 
-        if user_list.is_empty() {
+        let mut user = if user_list.is_empty() {
+            println!("no stored api credentials found; add a new user to continue:");
             writeln!(
                 console,
                 "no stored api credentials found; add a new user to continue:"
             )
             .unwrap();
-            let user = self.input_user();
+            let mut user = self.input_user();
 
             if verify_credentials {
                 test_request(client, config, &user).await?;
+                user.last_used = Some(chrono::offset::Utc::now());
             }
 
             config.add_user(user.clone(), store_password_in_plaintext)?;
-            Ok(user)
+            user
         } else {
             const ADD_A_USER_OPTION: &str = "add a user";
             user_list.push(ADD_A_USER_OPTION.to_owned());
@@ -173,14 +174,19 @@ impl<Backend: Interact> Login<Backend> {
 
                 if verify_credentials {
                     test_request(client, config, &user).await?;
+                    user.last_used = Some(chrono::offset::Utc::now());
                 }
 
                 config.add_user(user.clone(), store_password_in_plaintext)?;
-                Ok(user)
+                user
             } else {
-                Ok(config.get_users()[selection].clone())
+                config.get_users()[selection].clone()
             }
-        }
+        };
+
+        user.current_user = true;
+        config.set_current_user(&user);
+        Ok(user)
     }
 
     pub fn input_user(&mut self) -> config::User {
@@ -231,6 +237,7 @@ impl<Backend: Interact> Login<Backend> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::{TimeZone, Utc};
     use httptest::{
         all_of,
         matchers::{contains, request, url_decoded},
@@ -262,7 +269,7 @@ mod tests {
             username: String::from("username.2"),
             password: Some(SensitiveString::from("password.2")),
             current_user: true,
-            last_used: None,
+            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
         };
         let user_3 = User {
             address: String::from("testing.test.3"),
@@ -290,6 +297,21 @@ mod tests {
     }
 
     #[test]
+    fn test_combine_username_with_date() {
+        let user = User {
+            address: String::from("testing.test"),
+            username: String::from("username"),
+            password: Some(SensitiveString::from("password")),
+            current_user: false,
+            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
+        };
+        assert_eq!(
+            combine_username(&user).as_str(),
+            "username@testing.test (Last Used: 2007-10-19 07:23:04)"
+        );
+    }
+
+    #[test]
     fn test_list_users() {
         // Arrange
         let mut mock_config = config::MockConfigManager::new();
@@ -311,7 +333,7 @@ mod tests {
         let stdout = out.take();
         assert_eq!(
             stdout,
-            "  username.1@testing.test.1 (Last Used: Never)\n* username.2@testing.test.2 (Last Used: Never)\n  \
+            "  username.1@testing.test.1 (Last Used: Never)\n* username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)\n  \
              username.3@testing.test.3 (Last Used: Never)\n"
         );
     }
@@ -360,6 +382,12 @@ mod tests {
         mock_config
             .expect_get_users()
             .return_const(get_test_users());
+
+        mock_config
+            .expect_set_current_user()
+            .once()
+            .return_const(());
+
         let out = VirtualFile::new();
         let mut console = Console::new(false, out);
         let mut login = Login::new(backend);
@@ -371,7 +399,7 @@ mod tests {
                 eq(0),
                 eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
-                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
@@ -399,6 +427,7 @@ mod tests {
             selected_user.password.map(|s| s.secret().to_owned()),
             Some(String::from("password.3"))
         );
+        assert!(selected_user.current_user);
     }
 
     #[test]
@@ -422,6 +451,12 @@ mod tests {
             })
             .once()
             .returning(|_, _| Ok(()));
+
+        mock_config
+            .expect_set_current_user()
+            .once()
+            .return_const(());
+
         let out = VirtualFile::new();
         let mut console = Console::new(false, out);
         let mut login = Login::new(backend);
@@ -433,7 +468,7 @@ mod tests {
                 eq(0),
                 eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
-                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
@@ -480,6 +515,8 @@ mod tests {
             selected_user.password.map(|s| s.secret().to_owned()),
             Some(String::from("some_new_password"))
         );
+        assert!(selected_user.last_used.is_none());
+        assert!(selected_user.current_user);
     }
 
     #[test]
@@ -514,6 +551,11 @@ mod tests {
                 .once()
                 .returning(|_, _| Ok(()));
         }
+        mock_config
+            .expect_set_current_user()
+            .once()
+            .return_const(());
+
         let out = VirtualFile::new();
         let mut console = Console::new(false, out);
         let mut login = Login::new(backend);
@@ -525,7 +567,7 @@ mod tests {
                 eq(0),
                 eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
-                    String::from("username.2@testing.test.2 (Last Used: Never)"),
+                    String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
                     String::from("add a user"),
                 ]),
@@ -564,9 +606,9 @@ mod tests {
                 ])),
             ])
             .respond_with(json_encoded(json!({"meta": {
-                "limit": 1,
-                "next": null,
-                "offset": 0,
+                        "limit": 1,
+                        "next": null,
+                        "offset": 0,
                 "previous": null,
                 "total_count": 0,
             }, "objects": []}))),
@@ -593,5 +635,7 @@ mod tests {
             selected_user.password.map(|s| s.secret().to_owned()),
             Some(String::from("some_new_password"))
         );
+        assert!(selected_user.last_used.is_some());
+        assert!(selected_user.current_user);
     }
 }

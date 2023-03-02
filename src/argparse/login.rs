@@ -66,7 +66,7 @@ impl Login {
             login.delete_user(config)?;
             config.write_to_file()?;
         } else {
-            let user = login
+            let _user = login
                 .select_user(
                     &mut pexshell.console,
                     config,
@@ -76,7 +76,6 @@ impl Login {
                 )
                 .await?;
 
-            config.set_current_user(&user);
             config.write_to_file()?;
         };
         Ok(())
