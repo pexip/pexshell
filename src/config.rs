@@ -288,7 +288,7 @@ impl Manager {
                 .read_to_string(&mut config)
                 .map_err(|_| error::UserFriendly::new("config is invalid"))?;
             toml::from_str(&config)
-                .map_err(|e| error::UserFriendly::new(format!("config is invalid {e}")))
+                .map_err(|e| error::UserFriendly::new(format!("config is invalid: {e}")))
         }?;
 
         debug!("Read the following config: {:?}", &config);

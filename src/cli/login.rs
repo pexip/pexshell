@@ -148,7 +148,6 @@ impl<Backend: Interact> Login<Backend> {
         let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
 
         let mut user = if user_list.is_empty() {
-            println!("no stored api credentials found; add a new user to continue:");
             writeln!(
                 console,
                 "no stored api credentials found; add a new user to continue:"
@@ -606,9 +605,9 @@ mod tests {
                 ])),
             ])
             .respond_with(json_encoded(json!({"meta": {
-                        "limit": 1,
-                        "next": null,
-                        "offset": 0,
+                "limit": 1,
+                "next": null,
+                "offset": 0,
                 "previous": null,
                 "total_count": 0,
             }, "objects": []}))),
