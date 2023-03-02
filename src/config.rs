@@ -631,6 +631,7 @@ mod tests {
         username = "a_user"
         password = "another_password"
         current_user = true
+        last_used = 1192778584
         "#;
         let config_path = work_dir.join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
@@ -666,6 +667,10 @@ mod tests {
             "another_password"
         );
         assert!(config.users[1].current_user);
+        assert_eq!(
+            config.users[1].last_used,
+            Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap())
+        );
 
         assert_eq!(
             config.log.as_ref().and_then(|l| l.file.as_deref()),
@@ -700,7 +705,7 @@ mod tests {
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
-                    last_used: None,
+                    last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 07, 23, 04).unwrap()),
                 },
             ],
         };
@@ -741,6 +746,7 @@ password = "some_admin_password"
 address = "test_address.testing.com"
 username = "a_user"
 current_user = true
+last_used = 1192778584
 "#
         );
     }
