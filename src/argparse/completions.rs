@@ -45,7 +45,7 @@ impl Completions {
                     "pexshell",
                     &mut pexshell.console,
                 );
-                return
+                return;
             }
             "powershell" => clap_complete::Shell::PowerShell,
             "zsh" => clap_complete::Shell::Zsh,
