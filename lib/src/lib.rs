@@ -2,7 +2,6 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![allow(clippy::missing_errors_doc)]
-#![allow(clippy::future_not_send)]
 #![allow(clippy::missing_const_for_fn)]
 
 pub mod error;

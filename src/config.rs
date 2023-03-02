@@ -25,7 +25,7 @@ pub struct User {
 }
 
 #[cfg_attr(test, automock)]
-pub trait Provider {
+pub trait Provider: Send {
     fn get_log_file(&self) -> Option<PathBuf>;
 
     fn get_log_level(&self) -> Option<String>;
@@ -86,7 +86,7 @@ impl Config {
 pub struct Manager<'a> {
     config: Config,
     env: HashMap<String, String>,
-    keyring: Arc<Mutex<Box<dyn credentials::Provider>>>,
+    keyring: Arc<Mutex<Box<dyn credentials::Provider + Send>>>,
     config_file: RwLockWriteGuard<'a, File>,
 }
 
@@ -120,7 +120,7 @@ impl<'a> Manager<'a> {
         config_file_path: &Path,
         file_lock: &'a mut Option<RwLock<File>>,
         env: HashMap<String, String>,
-        keyring: impl credentials::Provider + 'static,
+        keyring: impl credentials::Provider + Send + 'static,
     ) -> Result<Self, error::UserFriendly> {
         let config_file_lock = RwLock::new(
             File::options()
@@ -167,7 +167,7 @@ impl<'a> Manager<'a> {
         config_file_path: &Path,
         file_lock: &'a mut Option<RwLock<File>>,
         env: HashMap<String, String>,
-        keyring: impl credentials::Provider + 'static,
+        keyring: impl credentials::Provider + Send + 'static,
     ) -> Result<Self, error::UserFriendly> {
         let config_file_lock = RwLock::new(
             File::options()
@@ -404,7 +404,7 @@ mod credentials {
     const SERVICE: &str = "pexshell";
 
     #[cfg_attr(test, automock)]
-    pub trait Provider {
+    pub trait Provider: Send {
         fn retrieve(&self, address: &str, username: &str) -> keyring::Result<SensitiveString>;
         fn save(
             &mut self,

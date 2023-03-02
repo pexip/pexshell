@@ -4,8 +4,6 @@
 //#![warn(clippy::cargo)]
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::missing_errors_doc)]
-#![allow(clippy::future_not_send)]
-#![allow(clippy::use_self)]
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::redundant_pub_crate)]
 #![allow(clippy::missing_panics_doc)]
@@ -47,7 +45,7 @@ pub(crate) trait Indent {
 
 impl Indent for String {
     fn indent(&self, spaces: usize) -> Self {
-        let mut replace = String::from("\n");
+        let mut replace = Self::from("\n");
         for _ in 0..spaces {
             replace.push(' ');
         }

@@ -1,6 +1,10 @@
 use futures::{future::join_all, Future};
 
-pub async fn join_all_results<S: Iterator<Item = impl Future<Output = Result<T, E>>>, T, E>(
+pub async fn join_all_results<
+    S: Iterator<Item = impl Future<Output = Result<T, E>> + Send> + Send,
+    T: Send + Sync,
+    E: Send + Sync,
+>(
     iter: S,
 ) -> Result<Vec<T>, E> {
     let mut results = Vec::new();

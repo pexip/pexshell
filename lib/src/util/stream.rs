@@ -4,12 +4,12 @@ use futures::{executor::BlockingStream, Stream};
 
 #[allow(clippy::module_name_repetitions)]
 pub struct StreamWrapper<T> {
-    inner: Pin<Box<dyn Stream<Item = T>>>,
+    inner: Pin<Box<dyn Stream<Item = T> + Send>>,
 }
 
 impl<T> StreamWrapper<T> {
     #[must_use]
-    pub fn new(inner: Pin<Box<dyn Stream<Item = T>>>) -> Self {
+    pub fn new(inner: Pin<Box<dyn Stream<Item = T> + Send>>) -> Self {
         Self { inner }
     }
 }

@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-type FutureFn<'a, T> = Box<dyn Fn(&mut Context<'_>) -> Poll<T> + 'a>;
+type FutureFn<'a, T> = Box<dyn Fn(&mut Context<'_>) -> Poll<T> + 'a + Send + Sync>;
 
 #[allow(clippy::module_name_repetitions)]
 pub struct MockFuture<'a, T> {
@@ -12,7 +12,7 @@ pub struct MockFuture<'a, T> {
 }
 
 impl<'a, T> MockFuture<'a, T> {
-    pub fn new(when_polled: impl Fn(&mut Context<'_>) -> Poll<T> + 'a) -> Self {
+    pub fn new(when_polled: impl Fn(&mut Context<'_>) -> Poll<T> + 'a + Send + Sync) -> Self {
         Self {
             when_polled: Box::new(when_polled),
         }

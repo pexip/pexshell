@@ -85,7 +85,7 @@ pub struct FieldBuilder {
 
 impl FieldBuilder {
     fn new() -> Self {
-        FieldBuilder {
+        Self {
             field: Field {
                 blank: false,
                 default: Value::Null,

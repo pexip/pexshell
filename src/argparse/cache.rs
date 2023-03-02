@@ -33,7 +33,7 @@ impl Cache {
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         if cache_matches.get_flag("clear") {
             info!("Clearing cache...");
             clear_cache(cache_dir)
@@ -58,7 +58,7 @@ impl Cache {
     }
 }
 
-fn clear_cache(cache_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn clear_cache(cache_dir: &Path) -> anyhow::Result<()> {
     for f in cache_dir.read_dir()? {
         let dir = f?;
         std::fs::remove_dir_all(
