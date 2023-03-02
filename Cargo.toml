@@ -25,6 +25,7 @@ chrono = { version = "0.4.19", features = [
 ], default-features = false } # for timestamps
 clap = { version = "4.1.8", features = ["wrap_help", "string"] }
 clap_complete = "4.0.5"
+clap_complete_nushell = "0.1.10"
 colored_json = "3.0.1"
 console = "0.15.5" # colour stderr logging
 dialoguer = { version = "0.10.1", features = ["fuzzy-select"] }

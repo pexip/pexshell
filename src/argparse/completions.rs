@@ -24,7 +24,7 @@ impl Completions {
                     .help("The shell to generate completions for")
                     .required(true)
                     .action(ArgAction::Set)
-                    .value_parser(["bash", "fish", "zsh"]),
+                    .value_parser(["bash", "elvish", "fish", "nushell", "powershell", "zsh"]),
             )
     }
 
@@ -33,12 +33,25 @@ impl Completions {
             .get_one::<String>("shell")
             .expect("argument shell is required")
             .as_str();
+
         let shell = match shell {
             "bash" => clap_complete::Shell::Bash,
+            "elvish" => clap_complete::Shell::Elvish,
             "fish" => clap_complete::Shell::Fish,
+            "nushell" => {
+                clap_complete::generate(
+                    clap_complete_nushell::Nushell,
+                    &mut command.clone(),
+                    "pexshell",
+                    &mut pexshell.console,
+                );
+                return;
+            }
+            "powershell" => clap_complete::Shell::PowerShell,
             "zsh" => clap_complete::Shell::Zsh,
             _ => panic!("Unhandled shell!"),
         };
+
         clap_complete::generate(
             shell,
             &mut command.clone(),
