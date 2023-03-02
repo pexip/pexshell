@@ -29,7 +29,7 @@ fn read_config<'a>(
     file_lock: &'a mut Option<RwLock<File>>,
     dirs: &Directories,
     env: &HashMap<String, String>,
-) -> Result<ConfigManager<'a>, Box<dyn std::error::Error>> {
+) -> anyhow::Result<ConfigManager<'a>> {
     debug!(
         "Ensuring config directory path is created: {:?}",
         &dirs.config_dir
@@ -97,7 +97,7 @@ impl<'a> PexShell<'a> {
         config: &ConfigManager<'_>,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let api_client = mcu::ApiClient::new(
             client,
             &config.get_address()?,
@@ -132,7 +132,7 @@ impl<'a> PexShell<'a> {
         Ok(())
     }
 
-    pub async fn run(&mut self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(&mut self, args: Vec<String>) -> anyhow::Result<()> {
         // File lock option to store the config file lock to maintain the lifetime
         let mut file_lock: Option<RwLock<File>> = None;
         // Read config file

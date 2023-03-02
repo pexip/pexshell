@@ -3,7 +3,6 @@
 #![warn(clippy::nursery)]
 //#![warn(clippy::cargo)]
 #![allow(clippy::missing_errors_doc)]
-#![allow(clippy::future_not_send)]
 #![allow(clippy::missing_const_for_fn)]
 
 mod argparse;
@@ -182,7 +181,7 @@ fn api_request_from_matches(
 }
 
 #[allow(dead_code)]
-async fn read_stdin_to_json() -> Result<Option<Value>, Box<dyn std::error::Error>> {
+async fn read_stdin_to_json() -> anyhow::Result<Option<Value>> {
     let mut contents = String::new();
     let _bytes_read = tokio::io::stdin().read_to_string(&mut contents).await?;
     if contents.is_empty() {
@@ -247,6 +246,8 @@ async fn main() {
     let result = pexshell.run(args).await;
 
     if let Err(e) = result {
+        error!("fatal error occurred: {e:?}");
+
         let style = if is_stderr_interactive {
             &*ERROR_STYLE
         } else {
@@ -262,8 +263,8 @@ pub async fn run_with(
     args: &[String],
     env: HashMap<String, String>,
     dirs: &Directories,
-    stdout_wrapper: impl std::io::Write + 'static,
-) -> Result<(), Box<dyn std::error::Error>> {
+    stdout_wrapper: impl std::io::Write + Send + 'static,
+) -> anyhow::Result<()> {
     let mut pexshell = pexshell::PexShell::new(dirs, Console::new(false, stdout_wrapper), env);
     pexshell.run(args.to_vec()).await
 }

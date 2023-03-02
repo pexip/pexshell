@@ -103,7 +103,7 @@ impl Default for CommandApi {
 
 #[async_trait]
 pub trait IApiClient {
-    async fn send(&self, request: ApiRequest) -> Result<ApiResponse, Box<dyn Error>>;
+    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
 
 #[derive(Debug, Clone)]
@@ -292,20 +292,20 @@ impl ApiClient {
                         Err(ApiError::new(
                             error.status(),
                             format!("error sending request: {inner}"),
-                            Some(Box::new(error)),
+                            Some(error.into()),
                         ))
                     } else {
                         Err(ApiError::new(
                             error.status(),
                             "error sending request",
-                            Some(Box::new(error)),
+                            Some(error.into()),
                         ))
                     }
                 } else {
                     Err(ApiError::new(
                         error.status(),
                         "error sending request",
-                        Some(Box::new(error)),
+                        Some(error.into()),
                     ))
                 }
             }
@@ -348,7 +348,7 @@ impl ApiClient {
     fn streamed_response(
         self,
         api_request: ApiRequest,
-    ) -> impl Stream<Item = Result<Value, ApiClientError>> {
+    ) -> impl Stream<Item = Result<Value, ApiClientError>> + Send {
         try_stream! {
             let client = self;
             if let ApiRequest::GetAll {
@@ -375,7 +375,7 @@ impl ApiClient {
                                     "failed to parse API response to JSON ({}):\n\n{}",
                                     e, &response_text
                                 ),
-                                Some(Box::new(e)),
+                                Some(e.into()),
                             )))?
                         }
                     };
@@ -488,7 +488,7 @@ struct JsonError {
 #[async_trait]
 #[allow(clippy::no_effect_underscore_binding)]
 impl IApiClient for ApiClient {
-    async fn send(&self, request: ApiRequest) -> Result<ApiResponse, Box<dyn Error>> {
+    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
         let is_command = matches!(
             request,
             ApiRequest::Post {
@@ -506,7 +506,7 @@ impl IApiClient for ApiClient {
                 ApiError::new(
                     e.status(),
                     format!("error building request: {e}"),
-                    Some(Box::new(e)),
+                    Some(e.into()),
                 )
             })?;
             let method = request.method().clone();
@@ -533,14 +533,15 @@ impl IApiClient for ApiClient {
                         match serde_json::from_str(&response_text) {
                             Ok(json) => json,
                             Err(e) => {
-                                return Err(Box::new(error::ApiError::new(
+                                return Err(error::ApiError::new(
                                     Some(response_code),
                                     format!(
                                         "failed to parse API response to JSON ({}):\n\n{}",
                                         e, &response_text
                                     ),
-                                    Some(Box::new(e)),
-                                )));
+                                    Some(e.into()),
+                                )
+                                .into());
                             }
                         }
                     }))

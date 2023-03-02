@@ -16,11 +16,11 @@ use serde_json::{json, Map, Value};
 
 pub struct Console {
     is_interactive: bool,
-    stdout: Box<dyn Write>,
+    stdout: Box<dyn Write + Send>,
 }
 
 impl Console {
-    pub fn new<Out: Write + 'static>(is_interactive: bool, stdout: Out) -> Self {
+    pub fn new<Out: Write + Send + 'static>(is_interactive: bool, stdout: Out) -> Self {
         Self {
             is_interactive,
             stdout: Box::new(stdout),

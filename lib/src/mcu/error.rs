@@ -4,7 +4,7 @@ use std::{error::Error, fmt::Display};
 pub struct ApiError {
     status: Option<reqwest::StatusCode>,
     message: String,
-    inner: Option<Box<dyn Error + Send>>,
+    inner: Option<anyhow::Error>,
 }
 
 impl ApiError {
@@ -12,7 +12,7 @@ impl ApiError {
     pub fn new(
         status: Option<reqwest::StatusCode>,
         message: impl Into<String>,
-        inner: Option<Box<dyn Error + Send>>,
+        inner: Option<anyhow::Error>,
     ) -> Self {
         Self {
             status,
@@ -32,7 +32,7 @@ impl ApiError {
     }
 
     #[must_use]
-    pub fn inner(&self) -> Option<&(dyn Error + Send)> {
+    pub fn inner(&self) -> Option<&(dyn Error + Send + Sync)> {
         self.inner.as_ref().map(std::convert::AsRef::as_ref)
     }
 }

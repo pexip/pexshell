@@ -18,7 +18,7 @@ use reqwest::StatusCode;
 use super::Console;
 
 #[cfg_attr(test, automock)]
-pub trait Interact {
+pub trait Interact: Send {
     fn text(&mut self, prompt: &str) -> String;
     fn password(&mut self, prompt: &str) -> SensitiveString;
     fn select<T: ToString + 'static>(&mut self, prompt: &str, default: usize, items: &[T])

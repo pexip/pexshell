@@ -1,4 +1,3 @@
-#![allow(clippy::unused_self)]
 use std::fmt::Display;
 
 use crate::pexshell::PexShell;
@@ -28,6 +27,7 @@ impl Completions {
             )
     }
 
+    #[allow(clippy::unused_self)]
     pub fn run(&self, pexshell: &mut PexShell, command: &Command, completions_sub: &ArgMatches) {
         let shell = completions_sub
             .get_one::<String>("shell")

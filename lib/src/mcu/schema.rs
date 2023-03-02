@@ -1,5 +1,3 @@
-#![allow(clippy::future_not_send)]
-
 use crate::mcu::{Api, ApiRequest, IApiClient};
 use crate::mcu::{ApiClient, CommandApi};
 use crate::util::join_all_results;
@@ -10,7 +8,6 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::{HashMap, HashSet};
 
-use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::{collections, path::Path};
@@ -262,17 +259,13 @@ pub async fn read_all_schemas(
     Ok(all_schemas)
 }
 
-pub async fn cache_schemas(api_client: &ApiClient, cache_dir: &Path) -> Result<(), Box<dyn Error>> {
+pub async fn cache_schemas(api_client: &ApiClient, cache_dir: &Path) -> anyhow::Result<()> {
     join_all_results(Api::iter().map(|api| cache_api(api_client, cache_dir, api))).await?;
 
     Ok(())
 }
 
-async fn cache_api(
-    api_client: &ApiClient,
-    cache_dir: &Path,
-    api: Api,
-) -> Result<(), Box<dyn Error>> {
+async fn cache_api(api_client: &ApiClient, cache_dir: &Path, api: Api) -> anyhow::Result<()> {
     let root_request = ApiRequest::ApiSchema { api };
     let json = api_client
         .send(root_request)
@@ -297,7 +290,7 @@ async fn cache_schema(
     cache_dir: &Path,
     api: Api,
     endpoint: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> anyhow::Result<()> {
     let request = ApiRequest::Schema {
         api,
         resource: String::from(endpoint),
