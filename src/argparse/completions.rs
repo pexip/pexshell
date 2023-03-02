@@ -39,12 +39,13 @@ impl Completions {
             "elvish" => clap_complete::Shell::Elvish,
             "fish" => clap_complete::Shell::Fish,
             "nushell" => {
-                return clap_complete::generate(
+                clap_complete::generate(
                     clap_complete_nushell::Nushell,
                     &mut command.clone(),
                     "pexshell",
                     &mut pexshell.console,
-                )
+                );
+                return
             }
             "powershell" => clap_complete::Shell::PowerShell,
             "zsh" => clap_complete::Shell::Zsh,
@@ -56,6 +57,6 @@ impl Completions {
             &mut command.clone(),
             "pexshell",
             &mut pexshell.console,
-        )
+        );
     }
 }
