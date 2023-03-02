@@ -25,12 +25,17 @@ impl SimpleLogger {
     pub fn new(log_file: Option<PathBuf>) -> std::io::Result<Self> {
         let log = match log_file {
             None => None,
-            Some(path) => Some(
-                std::fs::File::options()
-                    .create(true)
-                    .append(true)
-                    .open(path)?,
-            ),
+            Some(path) => {
+                if let Some(dir) = path.parent() {
+                    std::fs::create_dir_all(dir)?;
+                }
+                Some(
+                    std::fs::File::options()
+                        .create(true)
+                        .append(true)
+                        .open(path)?,
+                )
+            }
         };
         Ok(Self {
             config: Mutex::new(SimpleLoggerConfig {
@@ -66,12 +71,17 @@ impl SimpleLogger {
             }
             config.log_file = match log_file {
                 None => None,
-                Some(path) => Some(
-                    std::fs::File::options()
-                        .create(true)
-                        .append(true)
-                        .open(path)?,
-                ),
+                Some(path) => {
+                    if let Some(dir) = path.parent() {
+                        std::fs::create_dir_all(dir)?;
+                    }
+                    Some(
+                        std::fs::File::options()
+                            .create(true)
+                            .append(true)
+                            .open(path)?,
+                    )
+                }
             };
         }
         debug!("Hello, world!");
@@ -142,6 +152,7 @@ mod tests {
     use super::*;
     use log::Log;
     use test_case::test_case;
+    use test_helpers::get_test_context;
     use uuid::Uuid;
 
     #[test]
@@ -387,5 +398,50 @@ mod tests {
         } else {
             assert_eq!(log_lines.len(), 0);
         }
+    }
+
+    #[test]
+    fn test_new_creates_log_file_parent_directories() {
+        let test_context = get_test_context();
+        let log_file_path = test_context
+            .get_test_dir()
+            .join("tmp")
+            .join("pexip")
+            .join("pexshell")
+            .join("pexshell.log");
+        let logger = SimpleLogger::new(Some(log_file_path.clone())).unwrap();
+        logger.log(
+            &Record::builder()
+                .args(format_args!("testing"))
+                .level(Level::Error)
+                .build(),
+        );
+        let log = std::fs::read_to_string(log_file_path).unwrap();
+        let log_lines: Vec<&str> = log.lines().collect();
+        assert_eq!(log_lines.len(), 1);
+        assert!(log_lines[0].ends_with("Z  ERROR   --- testing"));
+    }
+
+    #[test]
+    fn test_set_log_file_creates_log_file_parent_directories() {
+        let test_context = get_test_context();
+        let log_file_path = test_context
+            .get_test_dir()
+            .join("tmp")
+            .join("pexip")
+            .join("pexshell")
+            .join("pexshell.log");
+        let logger = SimpleLogger::new(None).unwrap();
+        logger.set_log_file(Some(log_file_path.clone())).unwrap();
+        logger.log(
+            &Record::builder()
+                .args(format_args!("testing"))
+                .level(Level::Error)
+                .build(),
+        );
+        let log = std::fs::read_to_string(log_file_path).unwrap();
+        let log_lines: Vec<&str> = log.lines().collect();
+        assert_eq!(log_lines.len(), 1);
+        assert!(log_lines[0].ends_with("Z  ERROR   --- testing"));
     }
 }
