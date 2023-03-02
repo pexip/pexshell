@@ -29,25 +29,24 @@ runs:
     - id: vars
       run: |
         # calculate vars
-        # python3 on linux. python2 on macos
         import os
         from datetime import datetime
         from hashlib import sha256
 
         with open(os.environ["GITHUB_OUTPUT"], "a") as github_output:
             current_date = datetime.today().strftime('%Y-%m-%d')
-            github_output.write("CURRENT_DATE={}\n".format(current_date))
+            github_output.write(f"CURRENT_DATE={current_date}\n")
 
             crates = sorted(os.environ["crates"].split(","))
             crates_hash = sha256("\n".join(crates).encode()).hexdigest()
-            github_output.write("CRATES_HASH={}\n".format(crates_hash))
+            github_output.write(f"CRATES_HASH={crates_hash}\n")
 
         # print out output
         with open(os.environ["GITHUB_OUTPUT"], "r") as github_output:
             print(github_output.read())
       env:
         crates: ${{ inputs.cargo-install }}
-      shell: python
+      shell: python3 {0}
     - uses: actions/cache@v3
       with:
         path: |
