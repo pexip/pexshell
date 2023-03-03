@@ -163,13 +163,21 @@ impl<'a> Manager<'a> {
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + Send + 'static,
     ) -> Result<Self, error::UserFriendly> {
+        if let Some(parent) = config_file_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                error::UserFriendly::new(format!("failed to create config directory: {e}"))
+            })?;
+        }
+
         let config_file_lock = RwLock::new(
             File::options()
                 .read(true)
                 .write(true)
                 .create_new(true)
                 .open(config_file_path)
-                .map_err(|_| error::UserFriendly::new("failed to read config file"))?,
+                .map_err(|e| {
+                    error::UserFriendly::new(format!("failed to read config file: {e}"))
+                })?,
         );
 
         *file_lock = Some(config_file_lock);
@@ -485,6 +493,8 @@ mod credentials {
 mod tests {
     use mockall::predicate::{eq, function};
     use test_helpers::get_test_context;
+
+    use crate::test_util::TestContextExtensions;
 
     use super::*;
     use std::io::ErrorKind;
@@ -995,5 +1005,32 @@ current_user = true
         assert_eq!(users[1].username, "a_user");
         assert!(users[1].password.is_none());
         assert!(users[1].current_user);
+    }
+
+    #[test]
+    pub fn test_no_current_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let dirs = test_context.get_directories();
+        let config = Config::new(&dirs);
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            HashMap::new(),
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "no user signed in - please sign into a management node with: pexshell login"
+        );
     }
 }

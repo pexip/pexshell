@@ -17,13 +17,7 @@ use lib::{
 };
 use log::{debug, trace, LevelFilter};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    future,
-    io::Write,
-    path::PathBuf,
-};
+use std::{collections::HashMap, fs::File, future, io::Write, path::PathBuf};
 
 fn read_config<'a>(
     file_lock: &'a mut Option<RwLock<File>>,
@@ -34,7 +28,6 @@ fn read_config<'a>(
         "Ensuring config directory path is created: {:?}",
         &dirs.config_dir
     );
-    fs::create_dir_all(&dirs.config_dir)?;
 
     let config_file_path = dirs.config_dir.join("config.toml");
     debug!("Reading config from file: {:?}", &config_file_path);
