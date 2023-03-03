@@ -1,7 +1,7 @@
 use crate::{
     argparse,
     cli::Console,
-    config::{Config, Manager as ConfigManager, Provider},
+    config::{self, Config, Manager as ConfigManager, Provider},
     Directories, LOGGER,
 };
 
@@ -52,7 +52,7 @@ fn read_config<'a>(
 
     LOGGER.set_log_to_stderr(config.get_log_to_stderr());
 
-    if let Some(log) = config.get_log_file() {
+    if let Some(log) = config.get_log_file_path() {
         LOGGER.set_log_file(Some(log))?;
     }
 
@@ -94,15 +94,17 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &ConfigManager<'_>,
+        config: &mut impl config::Provider,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
+        let user = config.get_current_user()?;
+
         let api_client = mcu::ApiClient::new(
             client,
-            &config.get_address()?,
-            config.get_username()?,
-            config.get_password()?,
+            &user.address,
+            user.username.clone(),
+            config.get_password_for_user(user)?,
         );
         let (api_request, stream_output) = crate::api_request_from_matches(matches, &schemas.0)?;
 
@@ -181,11 +183,6 @@ impl<'a> PexShell<'a> {
                 .run(self, &mut config, client, login_sub)
                 .await?;
             return Ok(());
-        } else if config.get_current_user().is_none() && config.get_env_user().is_none() {
-            return Err(error::UserFriendly::new(
-                "no user signed in - please sign into a management node with: pexshell login",
-            )
-            .into());
         }
 
         // cache
@@ -213,7 +210,7 @@ impl<'a> PexShell<'a> {
         }
 
         // api request
-        self.api_request(client, &config, &matches, &schemas)
+        self.api_request(client, &mut config, &matches, &schemas)
             .await?;
         Ok(())
     }

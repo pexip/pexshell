@@ -1,4 +1,4 @@
-use crate::config::{Manager as ConfigManager, Provider};
+use crate::config;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use lib::{
     error,
@@ -29,7 +29,7 @@ impl Cache {
 
     pub async fn run<'a>(
         &self,
-        config: &mut ConfigManager<'a>,
+        config: &mut impl config::Provider,
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,
@@ -42,13 +42,15 @@ impl Cache {
             info!("Cache cleared.");
             eprintln!("Cache cleared.");
         } else {
+            let user = config.get_current_user()?;
+
             eprintln!("Generating cache...");
             info!("Generating cache...");
             let api_client = mcu::ApiClient::new(
                 client,
-                &config.get_address()?,
-                config.get_username()?,
-                config.get_password()?,
+                &user.address,
+                user.username.clone(),
+                config.get_password_for_user(user)?,
             );
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
