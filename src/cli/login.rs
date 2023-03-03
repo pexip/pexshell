@@ -144,7 +144,7 @@ impl<Backend: Interact> Login<Backend> {
         client: reqwest::Client,
         verify_credentials: bool,
         store_password_in_plaintext: bool,
-    ) -> Result<config::User, lib::error::UserFriendly> {
+    ) -> Result<(), lib::error::UserFriendly> {
         let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
 
         let mut user = if user_list.is_empty() {
@@ -185,7 +185,7 @@ impl<Backend: Interact> Login<Backend> {
 
         user.current_user = true;
         config.set_current_user(&user);
-        Ok(user)
+        Ok(())
     }
 
     pub fn input_user(&mut self) -> config::User {
@@ -250,7 +250,7 @@ mod tests {
 
     use crate::{
         cli::Console,
-        config::{self, Configurer, User},
+        config::{self, User},
     };
 
     use super::{combine_username, Login, MockInteract};
@@ -384,6 +384,16 @@ mod tests {
 
         mock_config
             .expect_set_current_user()
+            .withf(move |user: &User| {
+                user.address == "testing.test.3"
+                    && user.username == "username.3"
+                    && user
+                        .password
+                        .as_ref()
+                        .map_or(false, |s| s.secret() == "password.3")
+                    && user.current_user
+                    && user.last_used.is_none()
+            })
             .once()
             .return_const(());
 
@@ -407,7 +417,7 @@ mod tests {
             .return_const(2usize);
 
         // Act
-        let selected_user = tokio::runtime::Builder::new_current_thread()
+        tokio::runtime::Builder::new_current_thread()
             .build()
             .unwrap()
             .block_on(login.select_user(
@@ -418,15 +428,6 @@ mod tests {
                 false, // this option should *not* affect selecting a user
             ))
             .unwrap();
-
-        // Assert
-        assert_eq!(selected_user.address, "testing.test.3");
-        assert_eq!(selected_user.username, "username.3");
-        assert_eq!(
-            selected_user.password.map(|s| s.secret().to_owned()),
-            Some(String::from("password.3"))
-        );
-        assert!(selected_user.current_user);
     }
 
     #[test]
@@ -453,6 +454,16 @@ mod tests {
 
         mock_config
             .expect_set_current_user()
+            .withf(move |user: &User| {
+                user.address == "testing.new"
+                    && user.username == "some_new_username"
+                    && user
+                        .password
+                        .as_ref()
+                        .map_or(false, |s| s.secret() == "some_new_password")
+                    && user.current_user
+                    && user.last_used.is_none()
+            })
             .once()
             .return_const(());
 
@@ -495,7 +506,7 @@ mod tests {
             .return_const(SensitiveString::from("some_new_password"));
 
         // Act
-        let selected_user = tokio::runtime::Builder::new_current_thread()
+        tokio::runtime::Builder::new_current_thread()
             .build()
             .unwrap()
             .block_on(login.select_user(
@@ -506,16 +517,6 @@ mod tests {
                 true,
             ))
             .unwrap();
-
-        // Assert
-        assert_eq!(selected_user.address, "testing.new");
-        assert_eq!(selected_user.username, "some_new_username");
-        assert_eq!(
-            selected_user.password.map(|s| s.secret().to_owned()),
-            Some(String::from("some_new_password"))
-        );
-        assert!(selected_user.last_used.is_none());
-        assert!(selected_user.current_user);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -551,10 +552,25 @@ mod tests {
                 .once()
                 .returning(|_, _| Ok(()));
         }
-        mock_config
-            .expect_set_current_user()
-            .once()
-            .return_const(());
+
+        {
+            let uri = uri.clone();
+
+            mock_config
+                .expect_set_current_user()
+                .withf(move |user: &User| {
+                    user.address == uri
+                        && user.username == "some_new_username"
+                        && user
+                            .password
+                            .as_ref()
+                            .map_or(false, |s| s.secret() == "some_new_password")
+                        && user.current_user
+                        && user.last_used.is_some()
+                })
+                .once()
+                .return_const(());
+        }
 
         let out = VirtualFile::new();
         let mut console = Console::new(false, out);
@@ -626,15 +642,5 @@ mod tests {
                 false,
             ))
             .unwrap();
-
-        println!("{:?}", mock_config.get_users());
-        // Assert
-        // assert_eq!(selected_user.address, uri);
-        // assert_eq!(selected_user.username, "some_new_username");
-        // assert_eq!(
-        //     selected_user.password.map(|s| s.secret().to_owned()),
-        //     Some(String::from("some_new_password"))
-        // );
-        // assert!(selected_user.last_used.is_some());
     }
 }

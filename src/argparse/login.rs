@@ -62,7 +62,7 @@ impl Login {
             login.delete_user(config)?;
             config.write_to_file()?;
         } else {
-            let _user = login
+            login
                 .select_user(
                     &mut pexshell.console,
                     config,
