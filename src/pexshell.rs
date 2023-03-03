@@ -94,7 +94,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &mut impl config::Provider,
+        config: &impl config::Provider,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
@@ -188,10 +188,11 @@ impl<'a> PexShell<'a> {
         // cache
         if let Some(cache_matches) = matches.subcommand_matches(&argparse::Cache.to_string()) {
             argparse::Cache
-                .run(&mut config, &cache_dir, client, cache_matches)
+                .run(&config, &cache_dir, client, cache_matches)
                 .await?;
             return Ok(());
         } else if !cache_exists(&cache_dir) {
+            config.get_current_user()?; // show config error instead of schema cache error if no current user
             self.console.display_warning(
                 "schema cache is missing - please generate it with: pexshell cache",
             );
@@ -210,7 +211,7 @@ impl<'a> PexShell<'a> {
         }
 
         // api request
-        self.api_request(client, &mut config, &matches, &schemas)
+        self.api_request(client, &config, &matches, &schemas)
             .await?;
         Ok(())
     }

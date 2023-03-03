@@ -71,7 +71,7 @@ fn combine_username(user: &config::User) -> String {
 
 async fn test_request(
     client: reqwest::Client,
-    config: &mut impl config::Provider,
+    config: &impl config::Provider,
     user: &config::User,
 ) -> Result<(), lib::error::UserFriendly> {
     let api_client = ApiClient::new(

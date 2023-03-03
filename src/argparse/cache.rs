@@ -29,7 +29,7 @@ impl Cache {
 
     pub async fn run<'a>(
         &self,
-        config: &mut impl config::Provider,
+        config: &impl config::Provider,
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,

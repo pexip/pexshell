@@ -64,7 +64,7 @@ mock! {
 }
 
 /// Abstraction for accessing config. Takes into account environment variables.
-pub trait Provider: Send {
+pub trait Provider: Send + Sync {
     /// Gets the configured log file path.
     fn get_log_file_path(&self) -> Option<PathBuf>;
 
@@ -87,7 +87,7 @@ pub trait Provider: Send {
 
 /// Abstraction for accessing and modifying config.
 /// Does NOT take into account environment variables.
-pub trait Configurer: Send {
+pub trait Configurer: Send + Sync {
     fn get_users(&self) -> &[User];
 
     /// Add a user to the users list.
@@ -268,7 +268,7 @@ impl<'a> Manager<'a> {
         config_file.write_all(content.as_bytes())
     }
 
-    /// Gets the current user and a boolean indicating whether they can be found in the config file.
+    /// Gets the context required to determine the current user and how they are configured.
     /// Will fail if a current user has not been configured.
     fn get_current_user_config_context(&self) -> Result<UserConfigContext, error::UserFriendly> {
         self.env_user.as_ref().map_or_else(|| {
