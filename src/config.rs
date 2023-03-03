@@ -147,21 +147,6 @@ enum UserConfigContext {
 }
 
 impl<'a> Manager<'a> {
-    // fn get_var<T>(
-    //     &self,
-    //     env_name: &str,
-    //     config_value: Option<T>,
-    //     error_message: &str,
-    // ) -> Result<T, error::UserFriendly>
-    // where
-    //     String: Into<T>,
-    // {
-    //     self.env.get(env_name).cloned().map_or_else(
-    //         || config_value.map_or_else(|| Err(error::UserFriendly::new(error_message)), Ok),
-    //         |x| Ok(x.into()),
-    //     )
-    // }
-
     pub fn with_config(
         config: Config,
         config_file: &Path,
