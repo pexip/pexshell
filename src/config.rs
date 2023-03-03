@@ -116,6 +116,7 @@ pub struct Logging {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     log: Option<Logging>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     users: Vec<User>,
 }
 
@@ -163,13 +164,21 @@ impl<'a> Manager<'a> {
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + Send + 'static,
     ) -> Result<Self, error::UserFriendly> {
+        if let Some(parent) = config_file_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                error::UserFriendly::new(format!("failed to create config directory: {e}"))
+            })?;
+        }
+
         let config_file_lock = RwLock::new(
             File::options()
                 .read(true)
                 .write(true)
                 .create_new(true)
                 .open(config_file_path)
-                .map_err(|_| error::UserFriendly::new("failed to read config file"))?,
+                .map_err(|e| {
+                    error::UserFriendly::new(format!("failed to read config file: {e}"))
+                })?,
         );
 
         *file_lock = Some(config_file_lock);
@@ -280,7 +289,7 @@ impl<'a> Manager<'a> {
                     self.config.users.iter().position(|u| u.address == *env_address && u.username == *env_username)
                     .map_or_else(|| Err(error::UserFriendly::new(format!(
                             "environment variables {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} were set, \
-                            but {ENV_USER_PASSWORD} was not, and couldn't find a matching user in the config file. \n\
+                            but {ENV_USER_PASSWORD} was not, and couldn't find a matching user in the config file\n\
                             either login with matching credentials, set {ENV_USER_PASSWORD} in the environment, or \
                             unset {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} in the environment"
                         ))), |i| Ok(UserConfigContext::File(i)))
@@ -486,11 +495,14 @@ mod tests {
     use mockall::predicate::{eq, function};
     use test_helpers::get_test_context;
 
+    use crate::test_util::TestContextExtensions;
+
     use super::*;
     use std::io::ErrorKind;
+    use test_case::test_case;
 
     #[test]
-    pub fn test_read_empty_config_file() {
+    fn test_read_empty_config_file() {
         // Arrange
         let test_context = get_test_context();
         let work_dir = test_context.get_test_dir();
@@ -501,7 +513,7 @@ mod tests {
 
         // Act
         let mut file_lock = None;
-        let config = Manager::read_from_file_with_keyring(
+        let result = Manager::read_from_file_with_keyring(
             &config_path,
             &mut file_lock,
             HashMap::default(),
@@ -509,14 +521,13 @@ mod tests {
         );
 
         // Assert
-        assert!(config.is_err());
-        let e = config.map(|m| m.config).unwrap_err();
-
-        assert_eq!(format!("{e}").as_str(), "config is invalid");
+        let config = result.unwrap().config;
+        assert!(config.users.is_empty());
+        assert!(config.log.is_none());
     }
 
     #[test]
-    pub fn test_invalid_read_config_file() {
+    fn test_invalid_read_config_file() {
         // Arrange
         let test_context = get_test_context();
         let work_dir = test_context.get_test_dir();
@@ -542,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_read_from_file() {
+    fn test_read_from_file() {
         // Arrange
         let test_context = get_test_context();
         let work_dir = test_context.get_test_dir();
@@ -775,7 +786,7 @@ current_user = true
     }
 
     #[test]
-    pub fn test_add_user_with_plaintext_password() {
+    fn test_add_user_with_plaintext_password() {
         // Arrange
         let test_context = get_test_context();
         let config = Config {
@@ -846,7 +857,7 @@ current_user = true
     }
 
     #[test]
-    pub fn test_add_user_with_credential_store() {
+    fn test_add_user_with_credential_store() {
         // Arrange
         let test_context = get_test_context();
         let config = Config {
@@ -923,7 +934,7 @@ current_user = true
     }
 
     #[test]
-    pub fn test_add_user_with_credential_store_fails() {
+    fn test_add_user_with_credential_store_fails() {
         // Arrange
         let test_context = get_test_context();
         let config = Config {
@@ -995,5 +1006,232 @@ current_user = true
         assert_eq!(users[1].username, "a_user");
         assert!(users[1].password.is_none());
         assert!(users[1].current_user);
+    }
+
+    #[test]
+    fn test_no_users() {
+        // Arrange
+        let test_context = get_test_context();
+        let dirs = test_context.get_directories();
+        let config = Config::new(&dirs);
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            HashMap::new(),
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "no user signed in - please sign into a management node with: pexshell login"
+        );
+    }
+
+    #[test]
+    fn test_no_current_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: false,
+                },
+            ],
+        };
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            HashMap::new(),
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "no user signed in - please sign into a management node with: pexshell login"
+        );
+    }
+
+    #[test]
+    fn test_only_environment_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let dirs = test_context.get_directories();
+        let config = Config::new(&dirs);
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let env = HashMap::from([
+            (
+                String::from("PEXSHELL_ADDRESS"),
+                String::from("some.address"),
+            ),
+            (
+                String::from("PEXSHELL_USERNAME"),
+                String::from("some_username"),
+            ),
+            (
+                String::from("PEXSHELL_PASSWORD"),
+                String::from("super_secret_password"),
+            ),
+        ]);
+
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            env,
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        let user = result.unwrap();
+        assert_eq!(user.address, "some.address");
+        assert_eq!(user.username, "some_username");
+        assert_eq!(
+            user.password.as_ref().map(SensitiveString::secret),
+            Some("super_secret_password")
+        );
+    }
+
+    #[test_case(&[
+            ("PEXSHELL_ADDRESS", "some.address"),
+            ("PEXSHELL_USERNAME", "some_username"),
+        ],
+        "environment variables PEXSHELL_ADDRESS and PEXSHELL_USERNAME were set, but PEXSHELL_PASSWORD was not, \
+         and couldn't find a matching user in the config file\n\
+         either login with matching credentials, set PEXSHELL_PASSWORD in the environment, \
+         or unset PEXSHELL_ADDRESS and PEXSHELL_USERNAME in the environment"
+    )]
+    #[test_case(&[
+            ("PEXSHELL_ADDRESS", "some.address"),
+            ("PEXSHELL_PASSWORD", "super_secret_password"),
+        ],
+        "PEXSHELL_ADDRESS was set in the environment, but PEXSHELL_USERNAME was not\n\
+         please set either both environment variables, or neither"
+    )]
+    #[test_case(&[
+            ("PEXSHELL_USERNAME", "some_username"),
+            ("PEXSHELL_PASSWORD", "super_secret_password"),
+        ],
+        "PEXSHELL_USERNAME was set in the environment, but PEXSHELL_ADDRESS was not\n\
+         please set either both environment variables, or neither"
+    )]
+    fn test_only_environment_user_missing_vars(env: &[(&str, &str)], error_message: &str) {
+        // Arrange
+        let test_context = get_test_context();
+        let dirs = test_context.get_directories();
+        let config = Config::new(&dirs);
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let env = env
+            .iter()
+            .map(|&(k, v)| (k.to_owned(), v.to_owned()))
+            .collect::<HashMap<_, _>>();
+
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            env,
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        let err = result.unwrap_err();
+        assert_eq!(err.to_string(), error_message);
+    }
+
+    #[test]
+    fn test_env_selects_different_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let env = HashMap::from([
+            (
+                String::from("PEXSHELL_ADDRESS"),
+                String::from("test_address.test.com"),
+            ),
+            (String::from("PEXSHELL_USERNAME"), String::from("admin")),
+        ]);
+
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            env,
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        let user = result.unwrap();
+        assert_eq!(user.address, "test_address.test.com");
+        assert_eq!(user.username, "admin");
+        assert_eq!(
+            user.password.as_ref().map(SensitiveString::secret),
+            Some("some_admin_password")
+        );
     }
 }

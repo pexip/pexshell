@@ -1507,6 +1507,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple-signal",
+ "test-case",
  "test_helpers",
  "tokio",
  "toml",

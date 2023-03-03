@@ -17,13 +17,7 @@ use lib::{
 };
 use log::{debug, trace, LevelFilter};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    future,
-    io::Write,
-    path::PathBuf,
-};
+use std::{collections::HashMap, fs::File, future, io::Write, path::PathBuf};
 
 fn read_config<'a>(
     file_lock: &'a mut Option<RwLock<File>>,
@@ -34,7 +28,6 @@ fn read_config<'a>(
         "Ensuring config directory path is created: {:?}",
         &dirs.config_dir
     );
-    fs::create_dir_all(&dirs.config_dir)?;
 
     let config_file_path = dirs.config_dir.join("config.toml");
     debug!("Reading config from file: {:?}", &config_file_path);
@@ -250,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_read_from_file_not_found() {
+    fn test_read_from_file_not_found() {
         // Arrange
         let test_context = get_test_context();
         let dirs = test_context.get_directories();
@@ -268,9 +261,7 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(&config_path).unwrap(),
             format!(
-                r#"users = []
-
-[log]
+                r#"[log]
 file = {file_path}
 "#,
                 file_path = if log_file_path.contains('\\') {
