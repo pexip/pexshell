@@ -1,8 +1,4 @@
-use crate::{
-    cli,
-    config::{Configurer, Manager as ConfigManager},
-    pexshell::PexShell,
-};
+use crate::{cli, config::Manager as ConfigManager, pexshell::PexShell};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use lib::error;
 use std::fmt::Display;

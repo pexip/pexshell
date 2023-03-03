@@ -1,7 +1,7 @@
 use crate::{
     argparse,
     cli::Console,
-    config::{self, Config, Manager as ConfigManager, Provider},
+    config::{Config, Manager as ConfigManager, Provider},
     Directories, LOGGER,
 };
 
@@ -93,7 +93,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &impl config::Provider,
+        config: &mut ConfigManager<'_>,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
@@ -190,7 +190,7 @@ impl<'a> PexShell<'a> {
         // cache
         if let Some(cache_matches) = matches.subcommand_matches(&argparse::Cache.to_string()) {
             argparse::Cache
-                .run(&config, &cache_dir, client, cache_matches)
+                .run(&mut config, &cache_dir, client, cache_matches)
                 .await?;
             return Ok(());
         } else if !cache_exists(&cache_dir) {

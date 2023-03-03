@@ -9,15 +9,12 @@ use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use fslock::LockFile;
 use lib::util::SensitiveString;
 use log::debug;
-#[cfg(test)]
-use mockall::automock;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
 use std::ops::Not;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
-use time::OffsetDateTime;
 
 #[cfg(test)]
 use mockall::mock;
@@ -43,6 +40,7 @@ impl User {
             username,
             password: Some(password),
             current_user: false,
+            last_used: None,
         }
     }
 }
@@ -57,6 +55,7 @@ mock! {
         fn get_log_to_stderr(&self) -> bool;
         fn get_current_user<'a>(&'a self) -> Result<&'a User, error::UserFriendly>;
         fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+        fn set_last_used(&mut self);
     }
 
     impl Configurer for ConfigManager {
@@ -92,6 +91,9 @@ pub trait Provider: Send + Sync {
 
     /// Retrieves the password of a user.
     fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+
+    // Sets last used
+    fn set_last_used(&mut self);
 }
 
 /// Abstraction for accessing and modifying config.
@@ -113,8 +115,6 @@ pub trait Configurer: Send + Sync {
     fn set_current_user(&mut self, user: &User);
 
     fn try_get_current_user(&self) -> Option<&User>;
-
-    fn set_last_used(&mut self);
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -422,6 +422,19 @@ impl Provider for Manager {
             Ok,
         )
     }
+
+    fn set_last_used(&mut self) {
+        match self
+            .get_current_user_config_context()
+            .expect("no user logged in")
+        {
+            UserConfigContext::File(i) => {
+                let mut user = &mut self.config.users[i];
+                user.last_used = Some(chrono::offset::Utc::now());
+            }
+            UserConfigContext::Env => debug!("Not updating last used for environmental user"),
+        }
+    }
 }
 
 impl Configurer for Manager {
@@ -483,16 +496,6 @@ impl Configurer for Manager {
     #[must_use]
     fn try_get_current_user(&self) -> Option<&User> {
         self.config.users.iter().find(|user| user.current_user)
-    }
-
-    fn set_last_used(&mut self) {
-        let mut user = self
-            .config
-            .users
-            .iter_mut()
-            .find(|user| user.current_user)
-            .unwrap();
-        user.last_used = Some(chrono::offset::Utc::now());
     }
 }
 

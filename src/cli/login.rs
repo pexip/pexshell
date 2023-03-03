@@ -518,6 +518,7 @@ mod tests {
         assert!(selected_user.current_user);
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     pub fn test_select_user_add_and_verify() {
         // Arrange
