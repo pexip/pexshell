@@ -1176,12 +1176,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: false,
+                    last_used: None,
                 },
             ],
         };
@@ -1325,12 +1327,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
