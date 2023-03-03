@@ -1,6 +1,6 @@
 use crate::{
     cli,
-    config::{Manager as ConfigManager, Provider},
+    config::{Configurer, Manager as ConfigManager},
     pexshell::PexShell,
 };
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};

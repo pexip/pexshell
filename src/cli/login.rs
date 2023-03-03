@@ -71,15 +71,14 @@ fn combine_username(user: &config::User) -> String {
 
 async fn test_request(
     client: reqwest::Client,
+    config: &impl config::Provider,
     user: &config::User,
 ) -> Result<(), lib::error::UserFriendly> {
     let api_client = ApiClient::new(
         client,
         &user.address,
         user.username.clone(),
-        user.password
-            .clone()
-            .expect("password should have been read from system credential store"),
+        config.get_password_for_user(user)?,
     );
 
     match api_client
@@ -129,7 +128,7 @@ impl<Backend: Interact> Login<Backend> {
     pub async fn select_user(
         &mut self,
         console: &mut Console,
-        config: &mut impl config::Provider,
+        config: &mut (impl config::Configurer + config::Provider),
         client: reqwest::Client,
         verify_credentials: bool,
         store_password_in_plaintext: bool,
@@ -145,7 +144,7 @@ impl<Backend: Interact> Login<Backend> {
             let user = self.input_user();
 
             if verify_credentials {
-                test_request(client, &user).await?;
+                test_request(client, config, &user).await?;
             }
 
             config.add_user(user.clone(), store_password_in_plaintext)?;
@@ -160,7 +159,7 @@ impl<Backend: Interact> Login<Backend> {
                 let user = self.input_user();
 
                 if verify_credentials {
-                    test_request(client, &user).await?;
+                    test_request(client, config, &user).await?;
                 }
 
                 config.add_user(user.clone(), store_password_in_plaintext)?;
@@ -178,16 +177,11 @@ impl<Backend: Interact> Login<Backend> {
 
         let input_password = self.interact.password("password");
 
-        config::User {
-            address: input_address,
-            username: input_username,
-            password: Some(input_password),
-            current_user: false,
-        }
+        config::User::new(input_address, input_username, input_password)
     }
 
     #[allow(clippy::unused_self)]
-    pub fn list_users(&mut self, console: &mut Console, config: &impl config::Provider) {
+    pub fn list_users(&mut self, console: &mut Console, config: &impl config::Configurer) {
         let mut output = String::new();
         for user in config.get_users() {
             let mut user_ident = combine_username(user);
@@ -208,7 +202,7 @@ impl<Backend: Interact> Login<Backend> {
 
     pub fn delete_user(
         &mut self,
-        config: &mut impl config::Provider,
+        config: &mut impl config::Configurer,
     ) -> Result<(), error::UserFriendly> {
         let user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
         if user_list.is_empty() {
@@ -278,7 +272,7 @@ mod tests {
     #[test]
     fn test_list_users() {
         // Arrange
-        let mut mock_config = config::MockProvider::new();
+        let mut mock_config = config::MockConfigManager::new();
         mock_config
             .expect_get_users()
             .once()
@@ -342,7 +336,7 @@ mod tests {
     pub fn test_select_user() {
         // Arrange
         let backend = MockInteract::new();
-        let mut mock_config = config::MockProvider::new();
+        let mut mock_config = config::MockConfigManager::new();
         mock_config
             .expect_get_users()
             .return_const(get_test_users());
@@ -391,7 +385,7 @@ mod tests {
     pub fn test_select_user_add_no_verify() {
         // Arrange
         let backend = MockInteract::new();
-        let mut mock_config = config::MockProvider::new();
+        let mut mock_config = config::MockConfigManager::new();
         mock_config
             .expect_get_users()
             .return_const(get_test_users());
@@ -406,6 +400,7 @@ mod tests {
                         .map_or(false, |s| s.secret() == "some_new_password")
                     && *plaintext
             })
+            .once()
             .returning(|_, _| Ok(()));
         let out = VirtualFile::new();
         let mut console = Console::new(false, out);
@@ -473,10 +468,15 @@ mod tests {
         let server = Server::run();
         let uri = server.url_str("").trim_end_matches('/').to_owned();
         let backend = MockInteract::new();
-        let mut mock_config = config::MockProvider::new();
+        let mut mock_config = config::MockConfigManager::new();
         mock_config
             .expect_get_users()
             .return_const(get_test_users());
+
+        mock_config
+            .expect_get_password_for_user()
+            .once()
+            .returning(|user| Ok(user.password.clone().unwrap()));
 
         {
             let uri = uri.clone();
@@ -491,6 +491,7 @@ mod tests {
                             .map_or(false, |s| s.secret() == "some_new_password")
                         && !*plaintext
                 })
+                .once()
                 .returning(|_, _| Ok(()));
         }
         let out = VirtualFile::new();
