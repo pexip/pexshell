@@ -1195,13 +1195,10 @@ current_user = true
             ],
         };
         let config_path = test_context.get_config_dir().join("config.toml");
-        let env: HashMap<String, String> = [
-            ("PEXSHELL_ADDRESS", "test_address.test.com"),
-            ("PEXSHELL_USERNAME", "admin"),
-        ]
-        .iter()
-        .map(|&(k, v)| (k.to_owned(), v.to_owned()))
-        .collect();
+        let env = HashMap::from([
+            (String::from("PEXSHELL_ADDRESS"), String::from("test_address.test.com")),
+            (String::from("PEXSHELL_USERNAME"), String::from("admin")),
+        ]);
 
         let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
