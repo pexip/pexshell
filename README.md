@@ -4,8 +4,8 @@ Pexshell is a CLI tool for interacting with the Pexip Infinity Management API. F
 
 ## Installation (from source)
 
-1. Install the rust toolchain ([start here](https://www.rust-lang.org/learn/get-started))
-2. Run `cargo install --git https://github.com/pexip/pexshell`. Cargo will then build and install the Pexshell binary. Note down the directory it installs to and ensure it is in your `PATH`.
+1. Install [git](https://git-scm.com/) and the rust toolchain ([start here](https://www.rust-lang.org/learn/get-started))
+2. Run `git clone https://github.com/pexip/pexshell && cargo install --path pexshell`. Cargo will then build and install the Pexshell binary. Note down the directory it installs to and ensure it is in your `PATH`.
 
 ## Usage
 
