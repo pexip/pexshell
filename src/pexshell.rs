@@ -261,9 +261,7 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(&config_path).unwrap(),
             format!(
-                r#"users = []
-
-[log]
+                r#"[log]
 file = {file_path}
 "#,
                 file_path = if log_file_path.contains('\\') {

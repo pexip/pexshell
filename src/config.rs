@@ -116,6 +116,7 @@ pub struct Logging {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     log: Option<Logging>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     users: Vec<User>,
 }
 
@@ -512,7 +513,7 @@ mod tests {
 
         // Act
         let mut file_lock = None;
-        let config = Manager::read_from_file_with_keyring(
+        let result = Manager::read_from_file_with_keyring(
             &config_path,
             &mut file_lock,
             HashMap::default(),
@@ -520,10 +521,9 @@ mod tests {
         );
 
         // Assert
-        assert!(config.is_err());
-        let e = config.map(|m| m.config).unwrap_err();
-
-        assert_eq!(format!("{e}").as_str(), "config is invalid");
+        let config = result.unwrap().config;
+        assert!(config.users.is_empty());
+        assert!(config.log.is_none());
     }
 
     #[test]
