@@ -141,6 +141,11 @@ pub struct Manager<'a> {
     env_user: Option<User>,
 }
 
+enum UserConfigContext {
+    File(usize),
+    Env,
+}
+
 impl<'a> Manager<'a> {
     // fn get_var<T>(
     //     &self,
@@ -280,20 +285,20 @@ impl<'a> Manager<'a> {
 
     /// Gets the current user and a boolean indicating whether they can be found in the config file.
     /// Will fail if a current user has not been configured.
-    fn get_current_user_and_type(&self) -> Result<(&User, bool), error::UserFriendly> {
+    fn get_current_user_config_context(&self) -> Result<UserConfigContext, error::UserFriendly> {
         self.env_user.as_ref().map_or_else(|| {
             let env_address = self.env.get(ENV_USER_ADDRESS);
             let env_username = self.env.get(ENV_USER_USERNAME);
 
             match (env_address, env_username) {
                 (Some(env_address), Some(env_username)) => {
-                    self.config.users.iter().find(|u| u.address == *env_address && u.username == *env_username)
+                    self.config.users.iter().position(|u| u.address == *env_address && u.username == *env_username)
                     .map_or_else(|| Err(error::UserFriendly::new(format!(
                             "environment variables {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} were set, \
                             but {ENV_USER_PASSWORD} was not, and couldn't find a matching user in the config file. \n\
                             either login with matching credentials, set {ENV_USER_PASSWORD} in the environment, or \
                             unset {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} in the environment"
-                        ))), |user| Ok((user, true)))
+                        ))), |i| Ok(UserConfigContext::File(i)))
                 }
                 (Some(_env_address), None) => {
                     Err(error::UserFriendly::new(format!(
@@ -308,13 +313,13 @@ impl<'a> Manager<'a> {
                     )))
                 }
                 (None, None) => {
-                    self.config.users.iter().find(|u| u.current_user)
+                    self.config.users.iter().position(|u| u.current_user)
                         .map_or_else(|| Err(error::UserFriendly::new(String::from(
                             "no user signed in - please sign into a management node with: pexshell login"
-                        ))), |user| Ok((user, true)))
+                        ))), |i| Ok(UserConfigContext::File(i)))
                 }
             }
-        }, |env_user| Ok((env_user, false)))
+        }, |_env_user| Ok(UserConfigContext::Env))
     }
 
     /// Gets a user entirely defined by environment variables (if they are all set)
@@ -357,7 +362,10 @@ impl Provider for Manager<'_> {
     }
 
     fn get_current_user(&self) -> Result<&User, error::UserFriendly> {
-        self.get_current_user_and_type().map(|(user, _)| user)
+        match self.get_current_user_config_context()? {
+            UserConfigContext::File(i) => Ok(&self.config.users[i]),
+            UserConfigContext::Env => Ok(self.env_user.as_ref().unwrap()),
+        }
     }
 
     fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly> {
@@ -378,62 +386,6 @@ impl Provider for Manager<'_> {
 }
 
 impl Configurer for Manager<'_> {
-    // fn get_password(&self) -> Result<SensitiveString, error::UserFriendly> {
-    //     if let (Some(address), Some(username), None) = (
-    //         self.env.get(ENV_USER_ADDRESS),
-    //         self.env.get(ENV_USER_USERNAME),
-    //         self.env.get(ENV_USER_PASSWORD),
-    //     ) {
-    //         self.config
-    //             .users
-    //             .iter()
-    //             .find(|u| u.address == *address && u.username == *username)
-    //             .map_or_else(
-    //                 || {
-    //                     Err(error::UserFriendly::new(format!(
-    //                         "{ENV_USER_ADDRESS} and {ENV_USER_USERNAME} environment variables are configured, but \
-    //                          {ENV_USER_PASSWORD} is missing and the indicated user has not been logged in!",
-    //                     )))
-    //                 },
-    //                 |user| {
-    //                     user.password.clone().map_or_else(
-    //                         || {
-    //                             self.keyring
-    //                                 .lock()
-    //                                 .retrieve(&user.address, &user.username)
-    //                                 .map_err(|e| {
-    //                                     error::UserFriendly::new(format!(
-    //                                         "Error retrieving credentials from system store: {e}"
-    //                                     ))
-    //                                 })
-    //                         },
-    //                         Ok,
-    //                     )
-    //                 },
-    //             )
-    //     } else {
-    //         self.get_var(
-    //             ENV_USER_PASSWORD,
-    //             self.get_current_user().and_then(|x| x.password.clone()),
-    //             "",
-    //         )
-    //         .or_else(|_| {
-    //             let user = self
-    //                 .get_current_user()
-    //                 .ok_or_else(|| error::UserFriendly::new("Password is not configured"))?;
-    //             self.keyring
-    //                 .lock()
-    //                 .retrieve(&user.address, &user.username)
-    //                 .map_err(|e| {
-    //                     error::UserFriendly::new(format!(
-    //                     "Password is not configured and could not be retrieved from the system \
-    //                      store: {e}"
-    //                 ))
-    //                 })
-    //         })
-    //     }
-    // }
-
     #[must_use]
     fn get_users(&self) -> &[User] {
         &self.config.users
