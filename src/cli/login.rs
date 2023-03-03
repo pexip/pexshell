@@ -297,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_input_user() {
+    fn test_input_user() {
         // Arrange
         let backend = MockInteract::new();
         let mut login = Login::new(backend);
@@ -333,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_select_user() {
+    fn test_select_user() {
         // Arrange
         let backend = MockInteract::new();
         let mut mock_config = config::MockConfigManager::new();
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_select_user_add_no_verify() {
+    fn test_select_user_add_no_verify() {
         // Arrange
         let backend = MockInteract::new();
         let mut mock_config = config::MockConfigManager::new();

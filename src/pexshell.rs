@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_read_from_file_not_found() {
+    fn test_read_from_file_not_found() {
         // Arrange
         let test_context = get_test_context();
         let dirs = test_context.get_directories();
