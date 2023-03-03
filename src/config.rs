@@ -1089,9 +1089,18 @@ current_user = true
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
         let env = HashMap::from([
-            (String::from("PEXSHELL_ADDRESS"), String::from("some.address")),
-            (String::from("PEXSHELL_USERNAME"), String::from("some_username")),
-            (String::from("PEXSHELL_PASSWORD"), String::from("super_secret_password")),
+            (
+                String::from("PEXSHELL_ADDRESS"),
+                String::from("some.address"),
+            ),
+            (
+                String::from("PEXSHELL_USERNAME"),
+                String::from("some_username"),
+            ),
+            (
+                String::from("PEXSHELL_PASSWORD"),
+                String::from("super_secret_password"),
+            ),
         ]);
 
         let mut file_lock = None;
@@ -1196,7 +1205,10 @@ current_user = true
         };
         let config_path = test_context.get_config_dir().join("config.toml");
         let env = HashMap::from([
-            (String::from("PEXSHELL_ADDRESS"), String::from("test_address.test.com")),
+            (
+                String::from("PEXSHELL_ADDRESS"),
+                String::from("test_address.test.com"),
+            ),
             (String::from("PEXSHELL_USERNAME"), String::from("admin")),
         ]);
 
