@@ -1088,14 +1088,11 @@ current_user = true
         let dirs = test_context.get_directories();
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
-        let env = [
-            ("PEXSHELL_ADDRESS", "some.address"),
-            ("PEXSHELL_USERNAME", "some_username"),
-            ("PEXSHELL_PASSWORD", "super_secret_password"),
-        ]
-        .iter()
-        .map(|&(k, v)| (k.to_owned(), v.to_owned()))
-        .collect::<HashMap<_, _>>();
+        let env = HashMap::from([
+            (String::from("PEXSHELL_ADDRESS"), String::from("some.address")),
+            (String::from("PEXSHELL_USERNAME"), String::from("some_username")),
+            (String::from("PEXSHELL_PASSWORD"), String::from("super_secret_password")),
+        ]);
 
         let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
