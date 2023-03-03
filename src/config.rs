@@ -1008,11 +1008,57 @@ current_user = true
     }
 
     #[test]
-    pub fn test_no_current_user() {
+    pub fn test_no_users() {
         // Arrange
         let test_context = get_test_context();
         let dirs = test_context.get_directories();
         let config = Config::new(&dirs);
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            HashMap::new(),
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "no user signed in - please sign into a management node with: pexshell login"
+        );
+    }
+
+    #[test]
+    pub fn test_no_current_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: false,
+                },
+            ],
+        };
         let config_path = test_context.get_config_dir().join("config.toml");
         let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
