@@ -93,7 +93,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &mut ConfigManager<'_>,
+        config: &mut impl Provider,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
@@ -131,8 +131,7 @@ impl<'a> PexShell<'a> {
             ApiResponse::Nothing => (),
         };
 
-        config.set_last_used();
-        config.write_to_file()?;
+        config.set_last_used()?;
 
         Ok(())
     }

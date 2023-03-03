@@ -55,7 +55,7 @@ mock! {
         fn get_log_to_stderr(&self) -> bool;
         fn get_current_user<'a>(&'a self) -> Result<&'a User, error::UserFriendly>;
         fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
-        fn set_last_used(&mut self);
+        fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
     }
 
     impl Configurer for ConfigManager {
@@ -93,7 +93,7 @@ pub trait Provider: Send + Sync {
     fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
 
     // Sets last used
-    fn set_last_used(&mut self);
+    fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
 }
 
 /// Abstraction for accessing and modifying config.
@@ -423,7 +423,7 @@ impl Provider for Manager {
         )
     }
 
-    fn set_last_used(&mut self) {
+    fn set_last_used(&mut self) -> Result<(), error::UserFriendly> {
         match self
             .get_current_user_config_context()
             .expect("no user logged in")
@@ -431,9 +431,12 @@ impl Provider for Manager {
             UserConfigContext::File(i) => {
                 let mut user = &mut self.config.users[i];
                 user.last_used = Some(chrono::offset::Utc::now());
+
+                self.write_to_file()?;
             }
             UserConfigContext::Env => debug!("Not updating last used for environmental user"),
         }
+        Ok(())
     }
 }
 
