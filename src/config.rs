@@ -1171,4 +1171,61 @@ current_user = true
         let err = result.unwrap_err();
         assert_eq!(err.to_string(), error_message);
     }
+
+    #[test]
+    fn test_env_selects_different_user() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    username: String::from("admin"),
+                    password: Some(SensitiveString::from("some_admin_password")),
+                    current_user: false,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    username: String::from("a_user"),
+                    password: None,
+                    current_user: true,
+                },
+            ],
+        };
+        let config_path = test_context.get_config_dir().join("config.toml");
+        let env: HashMap<String, String> = [
+            ("PEXSHELL_ADDRESS", "test_address.test.com"),
+            ("PEXSHELL_USERNAME", "admin"),
+        ]
+        .iter()
+        .map(|&(k, v)| (k.to_owned(), v.to_owned()))
+        .collect();
+
+        let mut file_lock = None;
+        let mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &mut file_lock,
+            env,
+            credentials::MockProvider::new(),
+        )
+        .unwrap();
+
+        // Act
+        let result = mgr.get_current_user();
+
+        // Assert
+        let user = result.unwrap();
+        assert_eq!(user.address, "test_address.test.com");
+        assert_eq!(user.username, "admin");
+        assert_eq!(
+            user.password.as_ref().map(SensitiveString::secret),
+            Some("some_admin_password")
+        );
+    }
 }
