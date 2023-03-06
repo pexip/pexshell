@@ -10,6 +10,7 @@ use log::debug;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
+use std::ops::Not;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
 
@@ -24,6 +25,7 @@ pub struct User {
     password: Option<SensitiveString>,
     #[cfg(test)]
     pub password: Option<SensitiveString>,
+    #[serde(default, skip_serializing_if = "Not::not")]
     pub current_user: bool,
 }
 
@@ -566,7 +568,6 @@ mod tests {
         address = "test_address.test.com"
         username = "admin"
         password = "some_admin_password"
-        current_user = false
 
         [[users]]
         address = "test_address.testing.com"
@@ -594,7 +595,7 @@ mod tests {
         assert_eq!(config.users[0].address, "test_address.test.com");
         assert_eq!(config.users[0].username, "admin");
         assert_eq!(
-            config.users[0].password.clone().unwrap().secret(),
+            config.users[0].password.as_ref().unwrap().secret(),
             "some_admin_password"
         );
         assert!(!config.users[0].current_user);
@@ -602,7 +603,7 @@ mod tests {
         assert_eq!(config.users[1].address, "test_address.testing.com");
         assert_eq!(config.users[1].username, "a_user");
         assert_eq!(
-            config.users[1].password.clone().unwrap().secret(),
+            config.users[1].password.as_ref().unwrap().secret(),
             "another_password"
         );
         assert!(config.users[1].current_user);
@@ -672,7 +673,6 @@ level = "debug"
 address = "test_address.test.com"
 username = "admin"
 password = "some_admin_password"
-current_user = false
 
 [[users]]
 address = "test_address.testing.com"
@@ -680,6 +680,37 @@ username = "a_user"
 current_user = true
 "#
         );
+    }
+
+    #[test]
+    fn test_write_empty_config_file() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: None,
+            users: Vec::new(),
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let keyring = credentials::MockProvider::new();
+
+        let mut file_lock = None;
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            Path::new(&config_path),
+            &mut file_lock,
+            HashMap::default(),
+            keyring,
+        )
+        .unwrap();
+
+        // Act
+        mgr.write_to_file().unwrap();
+        drop(mgr);
+
+        // Assert
+        let written_config = std::fs::read_to_string(&config_path).unwrap();
+        assert_eq!(written_config, "");
     }
 
     #[test]
