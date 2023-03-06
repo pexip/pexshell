@@ -1,3 +1,4 @@
+use chrono::TimeZone;
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
@@ -20,6 +21,16 @@ use mockall::automock;
 use reqwest::StatusCode;
 
 use super::Console;
+
+#[cfg(test)]
+fn local_timezone() -> &'static chrono::Utc {
+    &chrono::Utc
+}
+
+#[cfg(not(test))]
+fn local_timezone() -> &'static chrono::Local {
+    &chrono::Local
+}
 
 #[cfg_attr(test, automock)]
 pub trait Interact: Send {
@@ -69,19 +80,30 @@ impl Interact for Interactive {
     }
 }
 
-fn format_last_used(user: &config::User) -> String {
+fn format_last_used<Tz: TimeZone>(user: &config::User, tz: &Tz) -> String
+where
+    Tz::Offset: std::fmt::Display,
+{
     user.last_used.map_or_else(
         || String::from("(Last Used: Never)"),
-        |datetime| format!("(Last Used: {})", datetime.format("%Y-%m-%d %H:%M:%S")),
+        |datetime| {
+            format!(
+                "(Last Used: {})",
+                datetime.with_timezone(tz).format("%Y-%m-%d %H:%M:%S")
+            )
+        },
     )
 }
 
-fn combine_username(user: &config::User) -> String {
+fn combine_username<Tz: TimeZone>(user: &config::User, tz: &Tz) -> String
+where
+    Tz::Offset: std::fmt::Display,
+{
     format!(
         "{}@{} {}",
         user.username,
         user.address,
-        format_last_used(user)
+        format_last_used(user, tz)
     )
 }
 
@@ -149,7 +171,11 @@ impl<Backend: Interact> Login<Backend> {
         verify_credentials: bool,
         store_password_in_plaintext: bool,
     ) -> Result<(), lib::error::UserFriendly> {
-        let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
+        let mut user_list: Vec<String> = config
+            .get_users()
+            .iter()
+            .map(|user| combine_username(user, local_timezone()))
+            .collect();
 
         let user = if user_list.is_empty() {
             writeln!(
@@ -205,7 +231,7 @@ impl<Backend: Interact> Login<Backend> {
     pub fn list_users(&mut self, console: &mut Console, config: &impl config::Configurer) {
         let mut output = String::new();
         for user in config.get_users() {
-            let mut user_ident = combine_username(user);
+            let mut user_ident = combine_username(user, local_timezone());
             if user.current_user {
                 if console.is_interactive() {
                     user_ident = console::Style::new()
@@ -225,7 +251,11 @@ impl<Backend: Interact> Login<Backend> {
         &mut self,
         config: &mut impl config::Configurer,
     ) -> Result<(), error::UserFriendly> {
-        let user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
+        let user_list: Vec<String> = config
+            .get_users()
+            .iter()
+            .map(|user| combine_username(user, local_timezone()))
+            .collect();
         if user_list.is_empty() {
             Err(error::UserFriendly::new("no stored api credentials found"))
         } else {
@@ -239,7 +269,7 @@ impl<Backend: Interact> Login<Backend> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
+    use chrono::{FixedOffset, TimeZone, Utc};
     use httptest::{
         all_of,
         matchers::{contains, request, url_decoded},
@@ -293,7 +323,7 @@ mod tests {
             last_used: None,
         };
         assert_eq!(
-            combine_username(&user).as_str(),
+            combine_username(&user, &Utc).as_str(),
             "username@testing.test (Last Used: Never)"
         );
     }
@@ -308,8 +338,24 @@ mod tests {
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
         assert_eq!(
-            combine_username(&user).as_str(),
+            combine_username(&user, &Utc).as_str(),
             "username@testing.test (Last Used: 2007-10-19 07:23:04)"
+        );
+    }
+
+    #[test]
+    fn test_combine_username_with_timezone() {
+        let user = User {
+            address: String::from("testing.test"),
+            username: String::from("username"),
+            password: Some(SensitiveString::from("password")),
+            current_user: false,
+            last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
+        };
+        let tz = FixedOffset::west_opt(5 * 60 * 60).unwrap();
+        assert_eq!(
+            combine_username(&user, &tz).as_str(),
+            "username@testing.test (Last Used: 2007-10-19 02:23:04)"
         );
     }
 
