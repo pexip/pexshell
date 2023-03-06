@@ -5,7 +5,6 @@ use crate::{
     Directories, LOGGER,
 };
 
-use fd_lock::RwLock;
 use futures::TryStreamExt;
 use lib::{
     error,
@@ -17,31 +16,38 @@ use lib::{
 };
 use log::{debug, trace, LevelFilter};
 use serde_json::Value;
-use std::{collections::HashMap, fs::File, future, io::Write, path::PathBuf};
+use std::{collections::HashMap, future, io::Write, path::PathBuf};
 
-fn read_config<'a>(
-    file_lock: &'a mut Option<RwLock<File>>,
+fn read_config(
     dirs: &Directories,
     env: &HashMap<String, String>,
-) -> anyhow::Result<ConfigManager<'a>> {
+    console: &mut Console,
+) -> anyhow::Result<ConfigManager> {
     debug!(
         "Ensuring config directory path is created: {:?}",
         &dirs.config_dir
     );
 
     let config_file_path = dirs.config_dir.join("config.toml");
+    let config_lock_file_path = dirs.config_dir.join("config.lock");
     debug!("Reading config from file: {:?}", &config_file_path);
 
     if !config_file_path.exists() {
         return Ok(ConfigManager::with_config(
             Config::new(dirs),
             &config_file_path,
-            file_lock,
+            &config_lock_file_path,
             env.clone(),
+            console,
         )?);
     }
 
-    let config = ConfigManager::read_from_file(&config_file_path, file_lock, env.clone())?;
+    let config = ConfigManager::read_from_file(
+        &config_file_path,
+        &config_lock_file_path,
+        env.clone(),
+        console,
+    )?;
 
     LOGGER.set_log_to_stderr(config.get_log_to_stderr());
 
@@ -129,9 +135,8 @@ impl<'a> PexShell<'a> {
 
     pub async fn run(&mut self, args: Vec<String>) -> anyhow::Result<()> {
         // File lock option to store the config file lock to maintain the lifetime
-        let mut file_lock: Option<RwLock<File>> = None;
         // Read config file
-        let mut config = read_config(&mut file_lock, self.directories, &self.env)?;
+        let mut config = read_config(self.directories, &self.env, &mut self.console)?;
 
         // Read schema from cache directory
         let cache_dir = self.directories.cache_dir.join("schemas");
@@ -214,7 +219,7 @@ impl<'a> PexShell<'a> {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{pexshell::read_config, test_util::TestContextExtensions};
+    use crate::{cli::Console, pexshell::read_config, test_util::TestContextExtensions};
     use lib::util::SimpleLogger;
     use log::{Level, Log, Record};
     use test_helpers::get_test_context;
@@ -248,11 +253,11 @@ mod tests {
         let test_context = get_test_context();
         let dirs = test_context.get_directories();
         let config_path = dirs.config_dir.join("config.toml");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         assert!(!config_path.exists());
 
         // Act
-        let mut file_lock = None;
-        let config = read_config(&mut file_lock, &dirs, &HashMap::default()).unwrap();
+        let config = read_config(&dirs, &HashMap::default(), &mut console).unwrap();
         drop(config);
 
         // Assert
