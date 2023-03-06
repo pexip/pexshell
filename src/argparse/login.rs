@@ -52,7 +52,7 @@ impl Login {
             )
     }
 
-    pub async fn run<'a, 'b>(
+    pub async fn run<'a>(
         &self,
         pexshell: &mut PexShell<'a>,
         config: &mut ConfigManager,
