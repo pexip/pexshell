@@ -38,7 +38,7 @@ impl Interact for Interactive {
             .map_err(|e| {
                 if e.kind() == std::io::ErrorKind::Interrupted {
                     error!("interactive select operation interrupted - exiting");
-                    let _ = console::Term::stderr().show_cursor();
+                    _ = console::Term::stderr().show_cursor();
                     std::process::exit(EXIT_CODE_INTERRUPTED);
                 }
                 e
