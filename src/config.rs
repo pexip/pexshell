@@ -1,10 +1,11 @@
+use crate::cli::Console;
 use crate::consts::{
     ENV_LOG_FILE, ENV_LOG_LEVEL, ENV_LOG_TO_STDERR, ENV_USER_ADDRESS, ENV_USER_PASSWORD,
     ENV_USER_USERNAME,
 };
 use crate::error;
 use crate::Directories;
-use fd_lock::{RwLock, RwLockWriteGuard};
+use fslock::LockFile;
 use lib::util::SensitiveString;
 use log::debug;
 use parking_lot::Mutex;
@@ -136,11 +137,12 @@ impl Config {
     }
 }
 
-pub struct Manager<'a> {
+pub struct Manager {
     config: Config,
     env: HashMap<String, String>,
     keyring: Arc<Mutex<Box<dyn credentials::Provider + Send>>>,
-    config_file: RwLockWriteGuard<'a, File>,
+    _file_lock: LockFile,
+    file_handle: File,
     env_user: Option<User>,
 }
 
@@ -149,22 +151,31 @@ enum UserConfigContext {
     Env,
 }
 
-impl<'a> Manager<'a> {
+impl Manager {
     pub fn with_config(
         config: Config,
         config_file: &Path,
-        file_lock: &'a mut Option<RwLock<File>>,
+        config_lock_file: &Path,
         env: HashMap<String, String>,
+        console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
-        Self::with_config_and_keyring(config, config_file, file_lock, env, credentials::Keyring {})
+        Self::with_config_and_keyring(
+            config,
+            config_file,
+            config_lock_file,
+            env,
+            credentials::Keyring {},
+            console,
+        )
     }
 
     fn with_config_and_keyring(
         config: Config,
         config_file_path: &Path,
-        file_lock: &'a mut Option<RwLock<File>>,
+        config_lock_file_path: &Path,
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + Send + 'static,
+        console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
         if let Some(parent) = config_file_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
@@ -172,24 +183,28 @@ impl<'a> Manager<'a> {
             })?;
         }
 
-        let config_file_lock = RwLock::new(
-            File::options()
-                .read(true)
-                .write(true)
-                .create_new(true)
-                .open(config_file_path)
-                .map_err(|e| {
-                    error::UserFriendly::new(format!("failed to read config file: {e}"))
-                })?,
-        );
+        let mut file_lock = LockFile::open(config_lock_file_path)
+            .map_err(|e| error::UserFriendly::new(format!("failed to lock config file: {e}")))?;
 
-        *file_lock = Some(config_file_lock);
+        debug!("Attempting to acquire lock to config file...");
+        if !file_lock
+            .try_lock()
+            .map_err(|e| error::UserFriendly::new(format!("failed to lock config file: {e}")))?
+        {
+            debug!("waiting for config file lock...");
+            writeln!(console, "waiting for config file lock...").unwrap();
+            file_lock.lock().map_err(|e| {
+                error::UserFriendly::new(format!("failed to lock config file: {e}"))
+            })?;
+        }
+        debug!("Config file lock acquired");
 
-        let config_file = file_lock
-            .as_mut()
-            .unwrap()
-            .write()
-            .expect("failed to acquire read lock");
+        let file_handle = File::options()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(config_file_path)
+            .map_err(|e| error::UserFriendly::new(format!("failed to read config file: {e}")))?;
 
         let env_user = Self::get_env_user(&env);
 
@@ -197,7 +212,8 @@ impl<'a> Manager<'a> {
             config,
             env,
             keyring: Arc::new(Mutex::new(Box::new(keyring))),
-            config_file,
+            file_handle,
+            _file_lock: file_lock,
             env_user,
         };
 
@@ -212,37 +228,55 @@ impl<'a> Manager<'a> {
     /// or an Err if the file can't be read or is invalid.
     pub fn read_from_file(
         config_file_path: &Path,
-        file_lock: &'a mut Option<RwLock<File>>,
+        config_lock_file_path: &Path,
         env: HashMap<String, String>,
+        console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
-        Self::read_from_file_with_keyring(config_file_path, file_lock, env, credentials::Keyring {})
+        Self::read_from_file_with_keyring(
+            config_file_path,
+            config_lock_file_path,
+            env,
+            credentials::Keyring {},
+            console,
+        )
     }
 
     fn read_from_file_with_keyring(
         config_file_path: &Path,
-        file_lock: &'a mut Option<RwLock<File>>,
+        config_lock_file_path: &Path,
         env: HashMap<String, String>,
         keyring: impl credentials::Provider + Send + 'static,
+        console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
-        let config_file_lock = RwLock::new(
-            File::options()
-                .read(true)
-                .write(true)
-                .open(config_file_path)
-                .map_err(|_| error::UserFriendly::new("failed to read config file"))?,
-        );
+        let mut file_lock = LockFile::open(config_lock_file_path)
+            .map_err(|e| error::UserFriendly::new(format!("failed to lock config file: {e}")))?;
 
-        *file_lock = Some(config_file_lock);
+        debug!("Attempting to acquire lock to config file...");
+        if !file_lock
+            .try_lock()
+            .map_err(|e| error::UserFriendly::new(format!("failed to lock config file: {e}")))?
+        {
+            debug!("Another process is holding the lock - waiting for it to be freed...");
+            writeln!(
+                console,
+                "another process has locked the config file - waiting for it to be freed..."
+            )
+            .unwrap();
+            file_lock.lock().map_err(|e| {
+                error::UserFriendly::new(format!("failed to lock config file: {e}"))
+            })?;
+        }
+        debug!("Config file lock acquired");
 
-        let mut config_file = file_lock
-            .as_mut()
-            .unwrap()
-            .write()
-            .expect("failed to acquire read lock");
+        let mut file_handle = File::options()
+            .read(true)
+            .write(true)
+            .open(config_file_path)
+            .map_err(|_| error::UserFriendly::new("failed to read config file"))?;
 
         let config: Config = {
             let mut config = String::new();
-            config_file
+            file_handle
                 .read_to_string(&mut config)
                 .map_err(|_| error::UserFriendly::new("config is invalid"))?;
             toml::from_str(&config).map_err(|_| error::UserFriendly::new("config is invalid"))
@@ -256,7 +290,8 @@ impl<'a> Manager<'a> {
             config,
             env,
             keyring: Arc::new(Mutex::new(Box::new(keyring))),
-            config_file,
+            _file_lock: file_lock,
+            file_handle,
             env_user,
         })
     }
@@ -272,11 +307,9 @@ impl<'a> Manager<'a> {
     }
 
     fn do_write(&mut self, content: &str) -> Result<(), std::io::Error> {
-        let config_file = &mut self.config_file;
-
-        config_file.set_len(0)?;
-        config_file.seek(std::io::SeekFrom::Start(0))?;
-        config_file.write_all(content.as_bytes())
+        self.file_handle.set_len(0)?;
+        self.file_handle.rewind()?;
+        self.file_handle.write_all(content.as_bytes())
     }
 
     /// Gets the context required to determine the current user and how they are configured.
@@ -332,7 +365,7 @@ impl<'a> Manager<'a> {
     }
 }
 
-impl Provider for Manager<'_> {
+impl Provider for Manager {
     fn get_log_file_path(&self) -> Option<PathBuf> {
         self.env.get(ENV_LOG_FILE).map_or_else(
             || self.config.log.as_ref().and_then(|l| l.file.clone()),
@@ -381,7 +414,7 @@ impl Provider for Manager<'_> {
     }
 }
 
-impl Configurer for Manager<'_> {
+impl Configurer for Manager {
     #[must_use]
     fn get_users(&self) -> &[User] {
         &self.config.users
@@ -500,7 +533,6 @@ mod tests {
     use crate::test_util::TestContextExtensions;
 
     use super::*;
-    use std::io::ErrorKind;
     use test_case::test_case;
 
     #[test]
@@ -511,15 +543,17 @@ mod tests {
 
         let config = "";
         let config_path = work_dir.join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         std::fs::write(&config_path, config).unwrap();
 
         // Act
-        let mut file_lock = None;
         let result = Manager::read_from_file_with_keyring(
             &config_path,
-            &mut file_lock,
+            &lock_path,
             HashMap::default(),
             credentials::MockProvider::new(),
+            &mut console,
         );
 
         // Assert
@@ -536,15 +570,17 @@ mod tests {
 
         let config = b"\xf0\x28\x8c\x28";
         let config_path = work_dir.join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         std::fs::write(&config_path, config).unwrap();
 
         // Act
-        let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             credentials::MockProvider::new(),
+            &mut console,
         );
 
         // Assert
@@ -576,15 +612,17 @@ mod tests {
         current_user = true
         "#;
         let config_path = work_dir.join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         std::fs::write(&config_path, config).unwrap();
 
         // Act
-        let mut file_lock = None;
         let config = Manager::read_from_file_with_keyring(
             &config_path,
-            &mut file_lock,
+            &lock_path,
             HashMap::default(),
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap()
         .config;
@@ -645,15 +683,17 @@ mod tests {
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
 
@@ -692,15 +732,17 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
 
@@ -728,31 +770,27 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
+        let mut test_lock = LockFile::open(&lock_path).unwrap();
 
-        let test_lock = RwLock::new(
-            File::options()
-                .read(true)
-                .write(true)
-                .open(&config_path)
-                .unwrap(),
-        );
         // Act
         mgr.write_to_file().unwrap();
-        let err = test_lock.try_read().unwrap_err();
+        let acquired = test_lock.try_lock().unwrap();
 
         // Assert
-        assert!(matches!(err.kind(), ErrorKind::WouldBlock));
+        assert!(!acquired);
     }
 
     #[test]
@@ -782,15 +820,17 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
 
@@ -843,15 +883,17 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
         let new_user = User {
@@ -914,6 +956,7 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let mut keyring = credentials::MockProvider::new();
         keyring
             .expect_save()
@@ -924,14 +967,15 @@ current_user = true
             )
             .once()
             .return_once(|_, _, _| Ok(()));
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
         let new_user = User {
@@ -991,6 +1035,7 @@ current_user = true
         };
 
         let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let mut keyring = credentials::MockProvider::new();
         keyring
             .expect_save()
@@ -1001,14 +1046,15 @@ current_user = true
             )
             .once()
             .return_once(|_, _, _| Err(keyring::Error::NoEntry));
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mut mgr = Manager::with_config_and_keyring(
             config,
-            Path::new(&config_path),
-            &mut file_lock,
+            &config_path,
+            &lock_path,
             HashMap::default(),
             keyring,
+            &mut console,
         )
         .unwrap();
         let new_user = User {
@@ -1046,13 +1092,15 @@ current_user = true
         let dirs = test_context.get_directories();
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
-        let mut file_lock = None;
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
-            &mut file_lock,
+            &lock_path,
             HashMap::new(),
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap();
 
@@ -1092,13 +1140,15 @@ current_user = true
             ],
         };
         let config_path = test_context.get_config_dir().join("config.toml");
-        let mut file_lock = None;
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
-            &mut file_lock,
+            &lock_path,
             HashMap::new(),
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap();
 
@@ -1119,6 +1169,7 @@ current_user = true
         let dirs = test_context.get_directories();
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let env = HashMap::from([
             (
                 String::from("PEXSHELL_ADDRESS"),
@@ -1133,14 +1184,15 @@ current_user = true
                 String::from("super_secret_password"),
             ),
         ]);
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
-            &mut file_lock,
+            &lock_path,
             env,
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap();
 
@@ -1186,18 +1238,20 @@ current_user = true
         let dirs = test_context.get_directories();
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let env = env
             .iter()
             .map(|&(k, v)| (k.to_owned(), v.to_owned()))
             .collect::<HashMap<_, _>>();
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
-            &mut file_lock,
+            &lock_path,
             env,
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap();
 
@@ -1235,6 +1289,7 @@ current_user = true
             ],
         };
         let config_path = test_context.get_config_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
         let env = HashMap::from([
             (
                 String::from("PEXSHELL_ADDRESS"),
@@ -1242,14 +1297,15 @@ current_user = true
             ),
             (String::from("PEXSHELL_USERNAME"), String::from("admin")),
         ]);
+        let mut console = Console::new(false, test_context.get_stdout_wrapper());
 
-        let mut file_lock = None;
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
-            &mut file_lock,
+            &lock_path,
             env,
             credentials::MockProvider::new(),
+            &mut console,
         )
         .unwrap();
 
