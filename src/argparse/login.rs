@@ -1,8 +1,4 @@
-use crate::{
-    cli,
-    config::{Configurer, Manager as ConfigManager},
-    pexshell::PexShell,
-};
+use crate::{cli, config::Manager as ConfigManager, pexshell::PexShell};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use lib::error;
 use std::fmt::Display;
@@ -66,7 +62,7 @@ impl Login {
             login.delete_user(config)?;
             config.write_to_file()?;
         } else {
-            let user = login
+            login
                 .select_user(
                     &mut pexshell.console,
                     config,
@@ -76,7 +72,6 @@ impl Login {
                 )
                 .await?;
 
-            config.set_current_user(&user);
             config.write_to_file()?;
         };
         Ok(())

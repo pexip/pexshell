@@ -5,6 +5,7 @@ use crate::consts::{
 };
 use crate::error;
 use crate::Directories;
+use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use fslock::LockFile;
 use lib::util::SensitiveString;
 use log::debug;
@@ -28,6 +29,8 @@ pub struct User {
     pub password: Option<SensitiveString>,
     #[serde(default, skip_serializing_if = "Not::not")]
     pub current_user: bool,
+    #[serde(with = "ts_seconds_option", default)]
+    pub last_used: Option<DateTime<Utc>>,
 }
 
 impl User {
@@ -37,6 +40,7 @@ impl User {
             username,
             password: Some(password),
             current_user: false,
+            last_used: None,
         }
     }
 }
@@ -51,6 +55,7 @@ mock! {
         fn get_log_to_stderr(&self) -> bool;
         fn get_current_user<'a>(&'a self) -> Result<&'a User, error::UserFriendly>;
         fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+        fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
     }
 
     impl Configurer for ConfigManager {
@@ -86,6 +91,9 @@ pub trait Provider: Send + Sync {
 
     /// Retrieves the password of a user.
     fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+
+    // Sets last used
+    fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
 }
 
 /// Abstraction for accessing and modifying config.
@@ -279,7 +287,8 @@ impl Manager {
             file_handle
                 .read_to_string(&mut config)
                 .map_err(|_| error::UserFriendly::new("config is invalid"))?;
-            toml::from_str(&config).map_err(|_| error::UserFriendly::new("config is invalid"))
+            toml::from_str(&config)
+                .map_err(|e| error::UserFriendly::new(format!("config is invalid: {e}")))
         }?;
 
         debug!("Read the following config: {:?}", &config);
@@ -361,6 +370,7 @@ impl Manager {
             username,
             password,
             current_user: false,
+            last_used: None,
         })
     }
 }
@@ -411,6 +421,22 @@ impl Provider for Manager {
             },
             Ok,
         )
+    }
+
+    fn set_last_used(&mut self) -> Result<(), error::UserFriendly> {
+        match self
+            .get_current_user_config_context()
+            .expect("no user logged in")
+        {
+            UserConfigContext::File(i) => {
+                let mut user = &mut self.config.users[i];
+                user.last_used = Some(chrono::offset::Utc::now());
+
+                self.write_to_file()?;
+            }
+            UserConfigContext::Env => debug!("Not updating last used for environmental user"),
+        }
+        Ok(())
     }
 }
 
@@ -533,6 +559,7 @@ mod tests {
     use crate::test_util::TestContextExtensions;
 
     use super::*;
+    use chrono::TimeZone;
     use test_case::test_case;
 
     #[test]
@@ -610,6 +637,7 @@ mod tests {
         username = "a_user"
         password = "another_password"
         current_user = true
+        last_used = 1192778584
         "#;
         let config_path = work_dir.join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
@@ -645,6 +673,10 @@ mod tests {
             "another_password"
         );
         assert!(config.users[1].current_user);
+        assert_eq!(
+            config.users[1].last_used,
+            Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())
+        );
 
         assert_eq!(
             config.log.as_ref().and_then(|l| l.file.as_deref()),
@@ -672,12 +704,14 @@ mod tests {
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
                 },
             ],
         };
@@ -718,6 +752,7 @@ password = "some_admin_password"
 address = "test_address.testing.com"
 username = "a_user"
 current_user = true
+last_used = 1192778584
 "#
         );
     }
@@ -766,6 +801,7 @@ current_user = true
                 username: String::from("admin"),
                 password: None,
                 current_user: false,
+                last_used: None,
             }],
         };
 
@@ -809,12 +845,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -872,12 +910,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -901,6 +941,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
@@ -945,12 +986,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -983,6 +1026,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
@@ -1024,12 +1068,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };
@@ -1062,6 +1108,7 @@ current_user = true
             username: String::from("a_new_user"),
             password: Some(SensitiveString::from("some_new_password")),
             current_user: false,
+            last_used: None,
         };
 
         // Act
@@ -1130,12 +1177,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: false,
+                    last_used: None,
                 },
             ],
         };
@@ -1279,12 +1328,14 @@ current_user = true
                     username: String::from("admin"),
                     password: Some(SensitiveString::from("some_admin_password")),
                     current_user: false,
+                    last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
                     username: String::from("a_user"),
                     password: None,
                     current_user: true,
+                    last_used: None,
                 },
             ],
         };

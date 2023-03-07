@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::Provider as ConfigProvider;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use lib::{
     error,
@@ -29,7 +29,7 @@ impl Cache {
 
     pub async fn run<'a>(
         &self,
-        config: &impl config::Provider,
+        config: &mut impl ConfigProvider,
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,
@@ -55,6 +55,8 @@ impl Cache {
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
             eprintln!("Cache created.");
+
+            config.set_last_used()?;
         }
         Ok(())
     }

@@ -1,7 +1,7 @@
 use crate::{
     argparse,
     cli::Console,
-    config::{self, Config, Manager as ConfigManager, Provider},
+    config::{Config, Manager as ConfigManager, Provider as ConfigProvider},
     Directories, LOGGER,
 };
 
@@ -93,7 +93,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &impl config::Provider,
+        config: &mut impl ConfigProvider,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
@@ -130,6 +130,9 @@ impl<'a> PexShell<'a> {
             }
             ApiResponse::Nothing => (),
         };
+
+        config.set_last_used()?;
+
         Ok(())
     }
 
@@ -186,7 +189,7 @@ impl<'a> PexShell<'a> {
         // cache
         if let Some(cache_matches) = matches.subcommand_matches(&argparse::Cache.to_string()) {
             argparse::Cache
-                .run(&config, &cache_dir, client, cache_matches)
+                .run(&mut config, &cache_dir, client, cache_matches)
                 .await?;
             return Ok(());
         } else if !cache_exists(&cache_dir) {
@@ -209,7 +212,7 @@ impl<'a> PexShell<'a> {
         }
 
         // api request
-        self.api_request(client, &config, &matches, &schemas)
+        self.api_request(client, &mut config, &matches, &schemas)
             .await?;
         Ok(())
     }

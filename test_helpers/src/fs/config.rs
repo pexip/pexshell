@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use serde::Serialize;
 use toml::{self, Value};
 
@@ -11,6 +12,8 @@ struct User {
     username: String,
     password: String,
     current_user: bool,
+    #[serde(with = "ts_seconds_option", default)]
+    pub last_used: Option<DateTime<Utc>>,
 }
 
 #[derive(Serialize)]
@@ -44,6 +47,7 @@ impl Configurer {
             username: username.into(),
             password: password.into(),
             current_user,
+            last_used: None,
         });
         self
     }
