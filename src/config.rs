@@ -559,6 +559,7 @@ mod tests {
     use crate::test_util::TestContextExtensions;
 
     use super::*;
+    use chrono::TimeZone;
     use test_case::test_case;
 
     #[test]
