@@ -1,6 +1,6 @@
-use chrono::TimeZone;
+use chrono::{Offset, TimeZone};
 use std::collections::HashMap;
-use std::fmt::Write as _;
+use std::fmt::{Display, Write as _};
 use std::io::Write;
 
 use crate::{
@@ -23,12 +23,12 @@ use reqwest::StatusCode;
 use super::Console;
 
 #[cfg(test)]
-fn local_timezone() -> &'static chrono::Utc {
+fn local_timezone() -> &'static impl TimeZone<Offset = impl Offset + Display> {
     &chrono::Utc
 }
 
 #[cfg(not(test))]
-fn local_timezone() -> &'static chrono::Local {
+fn local_timezone() -> &'static impl TimeZone<Offset = impl Offset + Display> {
     &chrono::Local
 }
 
@@ -80,10 +80,10 @@ impl Interact for Interactive {
     }
 }
 
-fn format_last_used<Tz: TimeZone>(user: &config::User, tz: &Tz) -> String
-where
-    Tz::Offset: std::fmt::Display,
-{
+fn format_last_used(
+    user: &config::User,
+    tz: &impl TimeZone<Offset = impl Offset + Display>,
+) -> String {
     user.last_used.map_or_else(
         || String::from("(Last Used: Never)"),
         |datetime| {
@@ -95,10 +95,10 @@ where
     )
 }
 
-fn combine_username<Tz: TimeZone>(user: &config::User, tz: &Tz) -> String
-where
-    Tz::Offset: std::fmt::Display,
-{
+fn combine_username(
+    user: &config::User,
+    tz: &impl TimeZone<Offset = impl Offset + Display>,
+) -> String {
     format!(
         "{}@{} {}",
         user.username,
