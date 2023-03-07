@@ -1,4 +1,4 @@
-use crate::config::Provider;
+use crate::config::Provider as ConfigProvider;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use lib::{
     error,
@@ -29,7 +29,7 @@ impl Cache {
 
     pub async fn run<'a>(
         &self,
-        config: &mut impl Provider,
+        config: &mut impl ConfigProvider,
         cache_dir: &Path,
         client: reqwest::Client,
         cache_matches: &ArgMatches,

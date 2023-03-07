@@ -1,7 +1,7 @@
 use crate::{
     argparse,
     cli::Console,
-    config::{Config, Manager as ConfigManager, Provider},
+    config::{Config, Manager as ConfigManager, Provider as ConfigProvider},
     Directories, LOGGER,
 };
 
@@ -93,7 +93,7 @@ impl<'a> PexShell<'a> {
     async fn api_request(
         &mut self,
         client: reqwest::Client,
-        config: &mut impl Provider,
+        config: &mut impl ConfigProvider,
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {

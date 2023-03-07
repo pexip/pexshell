@@ -2,7 +2,11 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
 
-use crate::{config, consts::EXIT_CODE_INTERRUPTED, set_abort_on_interrupt};
+use crate::{
+    config::{self, Provider as ConfigProvider},
+    consts::EXIT_CODE_INTERRUPTED,
+    set_abort_on_interrupt,
+};
 use dialoguer::{theme::ColorfulTheme as ColourfulTheme, FuzzySelect, Input, Password};
 use futures::TryStreamExt;
 use lib::{
@@ -83,7 +87,7 @@ fn combine_username(user: &config::User) -> String {
 
 async fn test_request(
     client: reqwest::Client,
-    config: &impl config::Provider,
+    config: &impl ConfigProvider,
     user: &config::User,
 ) -> Result<(), lib::error::UserFriendly> {
     let api_client = ApiClient::new(
@@ -147,7 +151,7 @@ impl<Backend: Interact> Login<Backend> {
     ) -> Result<(), lib::error::UserFriendly> {
         let mut user_list: Vec<String> = config.get_users().iter().map(combine_username).collect();
 
-        let mut user = if user_list.is_empty() {
+        let user = if user_list.is_empty() {
             writeln!(
                 console,
                 "no stored api credentials found; add a new user to continue:"
@@ -183,7 +187,6 @@ impl<Backend: Interact> Login<Backend> {
             }
         };
 
-        user.current_user = true;
         config.set_current_user(&user);
         Ok(())
     }
@@ -391,7 +394,6 @@ mod tests {
                         .password
                         .as_ref()
                         .map_or(false, |s| s.secret() == "password.3")
-                    && user.current_user
                     && user.last_used.is_none()
             })
             .once()
@@ -461,7 +463,6 @@ mod tests {
                         .password
                         .as_ref()
                         .map_or(false, |s| s.secret() == "some_new_password")
-                    && user.current_user
                     && user.last_used.is_none()
             })
             .once()
@@ -565,7 +566,6 @@ mod tests {
                             .password
                             .as_ref()
                             .map_or(false, |s| s.secret() == "some_new_password")
-                        && user.current_user
                         && user.last_used.is_some()
                 })
                 .once()
