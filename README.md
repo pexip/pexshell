@@ -1,5 +1,7 @@
 # Pexshell
 
+![build status](https://github.com/pexip/pexshell/actions/workflows/ci.yml/badge.svg?branch=master)
+
 Pexshell is a CLI tool for interacting with the Pexip Infinity Management API. For more information regarding the API see the [Pexip Docs](https://docs.pexip.com/admin/integrate_api.htm).
 
 ## Installation (from source)
