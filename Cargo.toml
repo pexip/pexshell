@@ -19,7 +19,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 async-stream = "0.3.3"
 async-trait = "0.1.66"
-chrono = { version = "0.4.19", features = [
+chrono = { version = "0.4.24", features = [
     "std",
     "clock",
     "serde",
