@@ -32,7 +32,7 @@ console = "0.15.5" # colour stderr logging
 dialoguer = { version = "0.10.1", features = ["fuzzy-select"] }
 directories = "4.0.1"
 fslock = "0.2.1"
-futures = { version = "0.3.21", features = ["executor"] }
+futures = { version = "0.3.27", features = ["executor"] }
 git-version = "0.3.5"
 is-terminal = "0.4.3" # for determining if stdout is a terminal (interactive)
 keyring = "2.0.1"
