@@ -79,7 +79,10 @@ runs:
       shell: bash
     - name: Install dependencies
       if: inputs.cargo-install != ''
-      run: cargo install ${crates//,/ }
+      run: |
+        for crate in ${crates//,/ }; do
+          cargo install ${crate//:/ }
+        done
       env:
         crates: ${{ inputs.cargo-install }}
       shell: bash
