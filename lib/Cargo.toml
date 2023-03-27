@@ -29,7 +29,7 @@ serde = { version = "1.0.155", features = ["derive"] }
 serde_json = "1.0.94"
 strum = { version = "0.24.1", features = ["derive"] }
 tokio = { version = "1.26.0", features = ["fs"] }
-zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+zeroize = { version = "1.6.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 derive_more = "0.99.17"
