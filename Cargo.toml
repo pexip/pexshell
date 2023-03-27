@@ -17,19 +17,19 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
-async-stream = "0.3.3"
-async-trait = "0.1.66"
+async-stream = "0.3.4"
+async-trait = "0.1.68"
 chrono = { version = "0.4.24", features = [
     "std",
     "clock",
     "serde",
 ], default-features = false } # for timestamps
-clap = { version = "4.1.8", features = ["wrap_help", "string"] }
+clap = { version = "4.1.13", features = ["wrap_help", "string"] }
 clap_complete = "4.1.5"
 clap_complete_nushell = "0.1.10"
-colored_json = "3.0.1"
+colored_json = "3.1.0"
 console = "0.15.5" # colour stderr logging
-dialoguer = { version = "0.10.1", features = ["fuzzy-select"] }
+dialoguer = { version = "0.10.3", features = ["fuzzy-select"] }
 directories = "4.0.1"
 fslock = "0.2.1"
 futures = { version = "0.3.27", features = ["executor"] }
@@ -45,8 +45,8 @@ log = { version = "0.4.17", features = [
     # "release_max_level_info", # may be useful for limiting logging in release builds, if we decide we want to do that
 ] }
 parking_lot = "0.12.1"
-reqwest = { version = "0.11.11", default-features = false, features = ["json"] }
-serde = { version = "1.0.155", features = ["derive"] }
+reqwest = { version = "0.11.15", default-features = false, features = ["json"] }
+serde = { version = "1.0.158", features = ["derive"] }
 serde_json = "1.0.94"
 tokio = { version = "1.26.0", features = ["macros", "io-std"] }
 toml = "0.7.3"
@@ -58,7 +58,7 @@ simple-signal = "1.1.1"
 [dev-dependencies]
 assert-panic = "1.0.1"
 httptest = "0.15.4"
-mockall = "0.11.3"
+mockall = "0.11.4"
 test-case = "3.0.0"
 test_helpers = { path = "test_helpers" }
 uuid = "1.3.0"
