@@ -15,8 +15,8 @@ allow-wildcard-paths = true
 highlight = "all"
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-    { name = "hermit-abi", version = "0.2.6" },    # from tokio v1.25.0
-    { name = "hermit-abi", version = "0.3.1" },    # from is-terminal v0.4.3
+    { name = "hermit-abi", version = "0.2.6" },    # from tokio v1.26.0
+    { name = "hermit-abi", version = "0.3.1" },    # from is-terminal v0.4.5
     { name = "linux-raw-sys", version = "0.1.4" },
     { name = "linux-raw-sys", version = "0.3.0" },
     { name = "rustix", version = "0.36.11" },
@@ -25,6 +25,8 @@ skip = [
     { name = "syn", version = "2.0.10" },
     { name = "windows-sys", version = "0.42.0" },
     { name = "windows-sys", version = "0.45.0" },
+    { name = "dirs-sys", version = "0.3.7" },      # from keyring v2.0.1
+    { name = "dirs-sys", version = "0.4.0" },      # from directories v5.0.0
 ]
 
 [sources]
