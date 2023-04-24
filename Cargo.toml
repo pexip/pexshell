@@ -24,8 +24,8 @@ chrono = { version = "0.4.24", features = [
     "clock",
     "serde",
 ], default-features = false } # for timestamps
-clap = { version = "4.2.2", features = ["wrap_help", "string"] }
-clap_complete = "4.2.0"
+clap = { version = "4.2.4", features = ["wrap_help", "string"] }
+clap_complete = "4.2.1"
 clap_complete_nushell = "0.1.10"
 colored_json = "3.1.0"
 console = "0.15.5" # colour stderr logging
