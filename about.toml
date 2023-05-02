@@ -45,6 +45,9 @@ accepted = ["BSD-3-Clause"]
 [pexshell]
 accepted = ["BSD-3-Clause"]
 
+[option-ext]
+accepted = ["MPL-2.0"]
+
 [pex_lib]
 accepted = ["BSD-3-Clause"]
 
