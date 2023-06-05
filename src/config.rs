@@ -429,7 +429,7 @@ impl Provider for Manager {
             .expect("no user logged in")
         {
             UserConfigContext::File(i) => {
-                let mut user = &mut self.config.users[i];
+                let user = &mut self.config.users[i];
                 user.last_used = Some(chrono::offset::Utc::now());
 
                 self.write_to_file()?;
