@@ -23,7 +23,11 @@ skip = [
     { name = "windows-sys", version = "0.45.0" },
     { name = "redox_syscall", version = "0.2.16" },
     { name = "redox_syscall", version = "0.3.5" },
-
+    { name = "indexmap", version = "1.9.3 " },
+    { name = "indexmap", version = "2.0.0 " },
+    # hashbrown is a dependency of indexmap
+    { name = "hashbrown", version = "0.12.3" },
+    { name = "hashbrown", version = "0.14.0" },
 ]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [
