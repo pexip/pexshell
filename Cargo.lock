@@ -1543,7 +1543,6 @@ dependencies = [
  "tokio",
  "toml",
  "uuid",
- "version",
 ]
 
 [[package]]
@@ -2540,12 +2539,6 @@ checksum = "0fa2982af2eec27de306107c027578ff7f423d65f7250e40ce0fea8f45248b81"
 dependencies = [
  "getrandom",
 ]
-
-[[package]]
-name = "version"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a449064fee414fcc201356a3e6c1510f6c8829ed28bb06b91c54ebe208ce065"
 
 [[package]]
 name = "version_check"
