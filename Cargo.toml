@@ -18,14 +18,14 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0"
 async-stream = "0.3.5"
-async-trait = "0.1.69"
+async-trait = "0.1.71"
 chrono = { version = "0.4.26", features = [
     "std",
     "clock",
     "serde",
 ], default-features = false } # for timestamps
-clap = { version = "4.3.10", features = ["wrap_help", "string"] }
-clap_complete = "4.3.1"
+clap = { version = "4.3.12", features = ["wrap_help", "string"] }
+clap_complete = "4.3.2"
 clap_complete_nushell = "4.3.1"
 colored_json = "3.2.0"
 console = "0.15.7" # colour stderr logging
@@ -34,7 +34,7 @@ directories = "5.0.1"
 fslock = "0.2.1"
 futures = { version = "0.3.28", features = ["executor"] }
 git-version = "0.3.5"
-is-terminal = "0.4.7" # for determining if stdout is a terminal (interactive)
+is-terminal = "0.4.9" # for determining if stdout is a terminal (interactive)
 keyring = "2.0.4"
 lazy_static = "1.4.0"
 lib = { package = "pex_lib", path = "lib", version = "0.1.0" }
@@ -46,10 +46,10 @@ log = { version = "0.4.19", features = [
 ] }
 parking_lot = "0.12.1"
 reqwest = { version = "0.11.18", default-features = false, features = ["json"] }
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
+serde = { version = "1.0.171", features = ["derive"] }
+serde_json = "1.0.103"
 tokio = { version = "1.29.1", features = ["macros", "io-std"] }
-toml = "0.7.5"
+toml = "0.7.6"
 
 [target.'cfg(unix)'.dependencies]
 simple-signal = "1.1.1"
@@ -60,7 +60,7 @@ httptest = "0.15.4"
 mockall = "0.11.4"
 test-case = "3.1.0"
 test_helpers = { path = "test_helpers" }
-uuid = "1.4.0"
+uuid = "1.4.1"
 
 [features]
 default = ["rustls-native-certs"]
