@@ -7,6 +7,7 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::redundant_pub_crate)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::significant_drop_in_scrutinee)]
 
 pub mod fs;
 pub mod future;
