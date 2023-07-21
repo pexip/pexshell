@@ -58,7 +58,7 @@ pub fn predicate(
 #[macro_export]
 macro_rules! predicate {
     ( $x:expr ) => {{
-        predicate($x, stringify!($x))
+        $crate::logging::expect::predicate($x, stringify!($x))
     }};
 }
 
@@ -75,11 +75,8 @@ pub fn all(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! all {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            all(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::all(b_vec)
         }
     };
 }
@@ -97,11 +94,8 @@ pub fn any(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! any {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            any(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::any(b_vec)
         }
     }
 }
@@ -123,11 +117,8 @@ pub fn in_order(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! in_order {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            in_order(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::in_order(b_vec)
         }
     }
 }
@@ -151,11 +142,8 @@ pub fn set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! set {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            set(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::set(b_vec)
         }
     }
 }
@@ -179,11 +167,8 @@ pub fn any_set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! any_set {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            any_set(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::any_set(b_vec)
         }
     }
 }
@@ -203,11 +188,8 @@ pub fn group(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 macro_rules! group {
     [ $( $x:expr ),* ] => {
         {
-            let mut b_vec = Vec::new();
-            $(
-                b_vec.push(Box::new($x));
-            )*
-            group(b_vec)
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::group(b_vec)
         }
     }
 }
@@ -349,7 +331,7 @@ struct Any {
 
 impl Debug for Any {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("all")
+        f.debug_struct("any")
             .field("expectations", &self.expectations)
             .finish()
     }
@@ -435,13 +417,18 @@ impl Debug for Set {
         f.debug_struct("Set")
             .field(
                 "unmet_expectations",
-                &self.expectations.iter().enumerate().filter_map(|(i, e)| {
-                    if self.complete.contains(&i) {
-                        None
-                    } else {
-                        Some(e)
-                    }
-                }),
+                &self
+                    .expectations
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, e)| {
+                        if self.complete.contains(&i) {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    })
+                    .collect::<Vec<_>>(),
             )
             .finish()
     }
@@ -489,7 +476,7 @@ struct AnySet {
 
 impl Debug for AnySet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Set")
+        f.debug_struct("AnySet")
             .field("expectations", &self.expectations)
             .finish()
     }
@@ -534,16 +521,21 @@ struct Group {
 
 impl Debug for Group {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Set")
+        f.debug_struct("Group")
             .field(
                 "unmet_expectations",
-                &self.expectations.iter().enumerate().filter_map(|(i, e)| {
-                    if self.complete.contains(&i) {
-                        None
-                    } else {
-                        Some(e)
-                    }
-                }),
+                &self
+                    .expectations
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, e)| {
+                        if self.complete.contains(&i) {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    })
+                    .collect::<Vec<_>>(),
             )
             .finish()
     }
@@ -589,5 +581,136 @@ impl Expectation for Group {
         }
         self.complete.clear();
         self.partial.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note: we would usually import `super::*` here, but not importing helps us test our macro hygiene.
+
+    #[test]
+    fn test_all_macro() {
+        assert_eq!(format!("{:?}", all!()), "all { expectations: [] }");
+        assert_eq!(
+            format!("{:?}", all!(super::contains("abc"))),
+            "all { expectations: [Contains { substring: \"abc\" }] }"
+        );
+        assert_eq!(
+            format!("{:?}", all!(super::contains("abc"), super::contains("def"))),
+            "all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+        );
+
+        assert_eq!(
+            format!("{:?}", all!(super::contains("abc"), super::contains("def"), all!())),
+            "all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, all { expectations: [] }] }"
+        );
+    }
+
+    #[test]
+    fn test_any_macro() {
+        assert_eq!(format!("{:?}", any!()), "any { expectations: [] }");
+        assert_eq!(
+            format!("{:?}", any!(super::contains("abc"))),
+            "any { expectations: [Contains { substring: \"abc\" }] }"
+        );
+        assert_eq!(
+            format!("{:?}", any!(super::contains("abc"), super::contains("def"))),
+            "any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+        );
+
+        assert_eq!(
+            format!("{:?}", any!(super::contains("abc"), super::contains("def"), any!())),
+            "any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, any { expectations: [] }] }"
+        );
+    }
+
+    #[test]
+    fn test_in_order_macro() {
+        assert_eq!(
+            format!("{:?}", in_order!()),
+            "InOrder { expectations: [], previous: None, next: 0 }"
+        );
+        assert_eq!(
+            format!("{:?}", in_order!(super::contains("abc"))),
+            "InOrder { expectations: [Contains { substring: \"abc\" }], previous: None, next: 0 }"
+        );
+        assert_eq!(
+            format!("{:?}", in_order!(super::contains("abc"), super::contains("def"))),
+            "InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], previous: None, next: 0 }"
+        );
+
+        assert_eq!(
+            format!("{:?}", in_order!(super::contains("abc"), super::contains("def"), in_order!())),
+            "InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, InOrder { expectations: [], previous: None, next: 0 }], previous: None, next: 0 }"
+        );
+    }
+
+    #[test]
+    fn test_set_macro() {
+        assert_eq!(format!("{:?}", set!()), "Set { unmet_expectations: [] }");
+        assert_eq!(
+            format!("{:?}", set!(super::contains("abc"))),
+            "Set { unmet_expectations: [Contains { substring: \"abc\" }] }"
+        );
+        assert_eq!(
+            format!("{:?}", set!(super::contains("abc"), super::contains("def"))),
+            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+        );
+
+        assert_eq!(
+            format!("{:?}", set!(super::contains("abc"), super::contains("def"), set!())),
+            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Set { unmet_expectations: [] }] }"
+        );
+    }
+
+    #[test]
+    fn test_any_set_macro() {
+        assert_eq!(format!("{:?}", any_set!()), "AnySet { expectations: [] }");
+        assert_eq!(
+            format!("{:?}", any_set!(super::contains("abc"))),
+            "AnySet { expectations: [Contains { substring: \"abc\" }] }"
+        );
+        assert_eq!(
+            format!("{:?}", any_set!(super::contains("abc"), super::contains("def"))),
+            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+        );
+
+        assert_eq!(
+            format!("{:?}", any_set!(super::contains("abc"), super::contains("def"), any_set!())),
+            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, AnySet { expectations: [] }] }"
+        );
+    }
+
+    #[test]
+    fn test_group_macro() {
+        assert_eq!(
+            format!("{:?}", group!()),
+            "Group { unmet_expectations: [] }"
+        );
+        assert_eq!(
+            format!("{:?}", group!(super::contains("abc"))),
+            "Group { unmet_expectations: [Contains { substring: \"abc\" }] }"
+        );
+        assert_eq!(
+            format!("{:?}", group!(super::contains("abc"), super::contains("def"))),
+            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+        );
+
+        assert_eq!(
+            format!("{:?}", group!(super::contains("abc"), super::contains("def"), group!())),
+            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Group { unmet_expectations: [] }] }"
+        );
+    }
+
+    #[test]
+    fn test_predicate_macro() {
+        assert_eq!(
+            format!("{:?}", predicate!(|_| true)),
+            "Closure { description: \"|_| true\" }"
+        );
+        assert_eq!(
+            format!("{:?}", predicate!(|x| x.line().unwrap() > 0)),
+            "Closure { description: \"|x| x.line().unwrap() > 0\" }"
+        );
     }
 }
