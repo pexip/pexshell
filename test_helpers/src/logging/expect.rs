@@ -114,6 +114,8 @@ pub fn in_order(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 
 /// Matches if all expectations completely match in the order they are given. Expectations do not all have to match
 /// completely on a single message, but the next expectation cannot begin matching until the previous expectation is complete.
+/// Each log message can at most be matched against a single expectation, so two identical expectations in sequence
+/// would consume one matching log message (or matching sequence of messages) each.
 #[macro_export]
 macro_rules! in_order {
     [ $( $x:expr ),* $(,)? ] => {
@@ -191,6 +193,25 @@ macro_rules! group {
         {
             let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
             $crate::logging::expect::group(b_vec)
+        }
+    }
+}
+
+#[must_use]
+pub fn any_group(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
+    AnyGroup {
+        expectations,
+        partial: HashSet::new(),
+        complete: false,
+    }
+}
+
+#[macro_export]
+macro_rules! any_group {
+    [ $( $x:expr ),* $(,)? ] => {
+        {
+            let b_vec: Vec<Box<dyn $crate::logging::expect::Expectation>> = vec![$(Box::new($x)),*];
+            $crate::logging::expect::any_group(b_vec)
         }
     }
 }
@@ -585,6 +606,56 @@ impl Expectation for Group {
     }
 }
 
+struct AnyGroup {
+    expectations: Vec<Box<dyn Expectation>>,
+    partial: HashSet<usize>,
+    complete: bool,
+}
+
+impl Debug for AnyGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AnyGroup")
+            .field("expectations", &self.expectations)
+            .finish()
+    }
+}
+
+impl Expectation for AnyGroup {
+    fn matches(&mut self, record: &log::Record) -> MatchResult {
+        if self.complete {
+            return MatchResult::NotMatch;
+        }
+        let mut has_matched = false;
+        for (i, expectation) in self.expectations.iter_mut().enumerate() {
+            match expectation.matches(record) {
+                MatchResult::NotMatch => {}
+                MatchResult::Match => {
+                    self.partial.insert(i);
+                    has_matched = true;
+                }
+                MatchResult::Complete => {
+                    self.partial.insert(i);
+                    self.complete = true;
+                    return MatchResult::Complete;
+                }
+            }
+        }
+        if has_matched {
+            MatchResult::Match
+        } else {
+            MatchResult::NotMatch
+        }
+    }
+
+    fn reset(&mut self) {
+        for &i in &self.partial {
+            self.expectations[i].reset();
+        }
+        self.complete = false;
+        self.partial.clear();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use log::Record;
@@ -648,6 +719,7 @@ mod tests {
     }
 
     #[allow(clippy::cognitive_complexity)]
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn test_sequences() {
         let r_info = Record::builder().level(log::Level::Info).build();
@@ -660,6 +732,7 @@ mod tests {
             set!(level(log::Level::Info), level(log::Level::Info)),
         );
         let mut in_order = in_order!(
+            level(log::Level::Info),
             level(log::Level::Info),
             level(log::Level::Trace),
             level(log::Level::Info),
@@ -689,6 +762,14 @@ mod tests {
                 level(log::Level::Info),
             ),
         );
+        let mut any_group = any_group!(
+            in_order!(
+                level(log::Level::Info),
+                level(log::Level::Trace),
+                level(log::Level::Info),
+            ),
+            in_order!(level(log::Level::Info), level(log::Level::Trace)),
+        );
 
         for _ in 0..3 {
             // First log line
@@ -700,16 +781,18 @@ mod tests {
             assert_eq!(any_set_a.matches(&r_info), MatchResult::Match);
             assert_eq!(any_set_b.matches(&r_info), MatchResult::Match);
             assert_eq!(group.matches(&r_info), MatchResult::Match);
+            assert_eq!(any_group.matches(&r_info), MatchResult::Match);
 
             // Second log line
             assert_eq!(all.matches(&r_info), MatchResult::Complete);
             assert_eq!(all_set.matches(&r_info), MatchResult::NotMatch);
             assert_eq!(any.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(in_order.matches(&r_info), MatchResult::NotMatch);
+            assert_eq!(in_order.matches(&r_info), MatchResult::Match);
             assert_eq!(set.matches(&r_info), MatchResult::Complete);
             assert_eq!(any_set_a.matches(&r_info), MatchResult::Match);
             assert_eq!(any_set_b.matches(&r_info), MatchResult::Match);
             assert_eq!(group.matches(&r_info), MatchResult::NotMatch);
+            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
 
             // Third log line
             assert_eq!(all.matches(&r_info), MatchResult::Complete);
@@ -720,6 +803,7 @@ mod tests {
             assert_eq!(any_set_a.matches(&r_info), MatchResult::NotMatch);
             assert_eq!(any_set_b.matches(&r_info), MatchResult::NotMatch);
             assert_eq!(group.matches(&r_info), MatchResult::NotMatch);
+            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
 
             // Fourth log line
             assert_eq!(all.matches(&r_trace), MatchResult::NotMatch);
@@ -730,6 +814,7 @@ mod tests {
             assert_eq!(any_set_a.matches(&r_trace), MatchResult::Match);
             assert_eq!(any_set_b.matches(&r_trace), MatchResult::Complete);
             assert_eq!(group.matches(&r_trace), MatchResult::Match);
+            assert_eq!(any_group.matches(&r_trace), MatchResult::Complete);
 
             // Fifth log line
             assert_eq!(all.matches(&r_info), MatchResult::Complete);
@@ -740,6 +825,7 @@ mod tests {
             assert_eq!(any_set_a.matches(&r_info), MatchResult::Complete);
             assert_eq!(any_set_b.matches(&r_info), MatchResult::NotMatch);
             assert_eq!(group.matches(&r_info), MatchResult::Complete);
+            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
 
             // Sixth log line
             assert_eq!(all.matches(&r_trace), MatchResult::NotMatch);
@@ -750,6 +836,7 @@ mod tests {
             assert_eq!(any_set_a.matches(&r_trace), MatchResult::NotMatch);
             assert_eq!(any_set_b.matches(&r_trace), MatchResult::NotMatch);
             assert_eq!(group.matches(&r_trace), MatchResult::NotMatch);
+            assert_eq!(any_group.matches(&r_trace), MatchResult::NotMatch);
 
             all.reset();
             all_set.reset();
@@ -759,6 +846,7 @@ mod tests {
             any_set_a.reset();
             any_set_b.reset();
             group.reset();
+            any_group.reset();
         }
     }
 
