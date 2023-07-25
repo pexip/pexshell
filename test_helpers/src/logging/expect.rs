@@ -21,11 +21,8 @@ pub trait Expectation: Send + 'static + Debug {
 }
 
 /// Matches logs against a specific log level, module path and message. Must match exactly.
-pub fn exact(
-    level: log::Level,
-    module_path: impl Into<String>,
-    message: impl Into<String>,
-) -> impl Expectation {
+#[must_use]
+pub fn exact(level: log::Level, module_path: &str, message: &str) -> impl Expectation {
     Exact {
         level,
         module_path: module_path.into(),
@@ -40,7 +37,8 @@ pub fn level(level: log::Level) -> impl Expectation {
 }
 
 /// Matches log messages that contain the specified substring.
-pub fn contains(substring: impl Into<String>) -> impl Expectation {
+#[must_use]
+pub fn contains(substring: &str) -> impl Expectation {
     Contains {
         substring: substring.into(),
     }
