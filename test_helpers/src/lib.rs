@@ -23,9 +23,9 @@ use std::{
 use base64::engine::general_purpose::STANDARD as base64;
 use base64::Engine;
 use fs::{Configurer, RootSchemaBuilder, SchemaBuilder};
-use lazy_static::lazy_static;
 use log::{info, warn, LevelFilter};
-use logging::TestLogger;
+use logging::{TestLogger, TestLoggerContext, TestLoggerPermit};
+use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
@@ -56,9 +56,7 @@ impl Indent for String {
     }
 }
 
-lazy_static! {
-    static ref LOGGER: TestLogger = TestLogger::new();
-}
+static LOGGER: TestLogger = TestLogger::new();
 
 #[derive(Clone)]
 pub struct VirtualFile {
@@ -123,6 +121,8 @@ pub struct TestContext {
     clean_up: bool,
     tokio_runtime: tokio::runtime::Runtime,
     stdout_buffer: Arc<Mutex<String>>,
+    logging_permit: Mutex<Option<TestLoggerPermit<'static>>>,
+    logging_context: OnceCell<TestLoggerContext<'static>>,
 }
 
 impl Drop for TestContext {
@@ -133,7 +133,9 @@ impl Drop for TestContext {
                  {:?}.",
                 &self.test_dir
             );
+            self.logger().clear();
         } else {
+            self.logger().verify();
             if self.clean_up && self.test_dir.exists() {
                 info!("Cleaning up test dir...");
                 std::fs::remove_dir_all(&self.test_dir).unwrap();
@@ -147,7 +149,7 @@ impl TestContext {
     fn new(test_dir: PathBuf) -> Self {
         let cache_dir = test_dir.join("cache");
         let config_dir = test_dir.join("config");
-        _ = log::set_logger(&*LOGGER);
+        _ = log::set_logger(&LOGGER);
         log::set_max_level(LevelFilter::max());
         info!("test work dir: {}", test_dir.to_str().unwrap());
         let stdout_buffer = Arc::new(Mutex::new(String::new()));
@@ -162,12 +164,14 @@ impl TestContext {
                 .build()
                 .unwrap(),
             stdout_buffer,
+            logging_permit: Mutex::new(Some(LOGGER.get_permit())),
+            logging_context: OnceCell::new(),
         }
     }
 
     #[must_use]
     pub fn log_level(self, level: LevelFilter) -> Self {
-        LOGGER.get_config_mut().log_level = level;
+        self.logger().get_config_mut().log_level = level;
         self
     }
 
@@ -257,8 +261,9 @@ impl TestContext {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn get_logger(&self) -> &TestLogger {
-        &LOGGER
+    pub fn logger(&self) -> &TestLoggerContext {
+        self.logging_context
+            .get_or_init(|| self.logging_permit.lock().take().unwrap().promote())
     }
 
     pub fn get_stdout_wrapper(&self) -> impl std::io::Write {

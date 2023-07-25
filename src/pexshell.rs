@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use crate::{
     argparse,
     cli::Console,

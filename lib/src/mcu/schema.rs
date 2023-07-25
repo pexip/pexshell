@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use crate::mcu::{Api, ApiRequest, IApiClient};
 use crate::mcu::{ApiClient, CommandApi};
 use crate::util::join_all_results;

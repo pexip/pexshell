@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use std::collections::HashMap;
 
 use httptest::{matchers::request, responders::json_encoded, Expectation, Server};
@@ -17,7 +19,7 @@ fn get_conference_config() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
-    let logger = test_context.get_logger();
+    let logger = test_context.logger();
     logger.expect(expect::exact(log::Level::Info, module_path!(), "testerooo"));
     info!("testerooo");
 
