@@ -43,7 +43,7 @@ impl Console {
             static ref STYLE: console::Style = console::Style::new().fg(console::Color::Yellow);
         }
         writeln!(
-            self.stdout,
+            self.stderr,
             "{}",
             STYLE.apply_to(format!("Warning: {message}"))
         )
