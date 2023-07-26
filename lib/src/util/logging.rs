@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use std::path::PathBuf;
 use std::{fs::File, io::Write};
 

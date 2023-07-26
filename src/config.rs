@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use crate::cli::Console;
 use crate::consts::{
     ENV_LOG_FILE, ENV_LOG_LEVEL, ENV_LOG_TO_STDERR, ENV_USER_ADDRESS, ENV_USER_PASSWORD,

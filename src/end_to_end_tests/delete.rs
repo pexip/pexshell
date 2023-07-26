@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use std::collections::HashMap;
 
 use httptest::{matchers::request, responders::status_code, Expectation, Server};
