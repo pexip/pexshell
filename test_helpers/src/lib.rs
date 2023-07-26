@@ -121,6 +121,7 @@ pub struct TestContext {
     clean_up: bool,
     tokio_runtime: tokio::runtime::Runtime,
     stdout_buffer: Arc<Mutex<String>>,
+    stderr_buffer: Arc<Mutex<String>>,
     logging_permit: Mutex<Option<TestLoggerPermit<'static>>>,
     logging_context: OnceCell<TestLoggerContext<'static>>,
 }
@@ -153,6 +154,7 @@ impl TestContext {
         log::set_max_level(LevelFilter::max());
         info!("test work dir: {}", test_dir.to_str().unwrap());
         let stdout_buffer = Arc::new(Mutex::new(String::new()));
+        let stderr_buffer = Arc::new(Mutex::new(String::new()));
 
         Self {
             test_dir,
@@ -164,6 +166,7 @@ impl TestContext {
                 .build()
                 .unwrap(),
             stdout_buffer,
+            stderr_buffer,
             logging_permit: Mutex::new(Some(LOGGER.get_permit())),
             logging_context: OnceCell::new(),
         }
@@ -268,6 +271,11 @@ impl TestContext {
 
     pub fn get_stdout_wrapper(&self) -> impl std::io::Write {
         let buffer = Arc::clone(&self.stdout_buffer);
+        VirtualFile { buffer }
+    }
+
+    pub fn get_stderr_wrapper(&self) -> impl std::io::Write {
+        let buffer = Arc::clone(&self.stderr_buffer);
         VirtualFile { buffer }
     }
 

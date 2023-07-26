@@ -17,13 +17,19 @@ use serde_json::{json, Map, Value};
 pub struct Console {
     is_interactive: bool,
     stdout: Box<dyn Write + Send>,
+    stderr: Box<dyn Write + Send>,
 }
 
 impl Console {
-    pub fn new<Out: Write + Send + 'static>(is_interactive: bool, stdout: Out) -> Self {
+    pub fn new<Out: Write + Send + 'static, Error: Write + Send + 'static>(
+        is_interactive: bool,
+        stdout: Out,
+        stderr: Error,
+    ) -> Self {
         Self {
             is_interactive,
             stdout: Box::new(stdout),
+            stderr: Box::new(stderr),
         }
     }
 
@@ -53,6 +59,10 @@ impl Console {
             serde_json::to_string_pretty(json).unwrap()
         };
         writeln!(&mut self.stdout, "{pretty}").unwrap();
+    }
+
+    pub fn stderr(&mut self) -> &mut (dyn Write + Send) {
+        &mut self.stderr
     }
 }
 

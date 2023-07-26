@@ -95,6 +95,7 @@ fn cache_conference_config() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -129,6 +130,7 @@ fn clear_cache() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -216,6 +218,7 @@ fn schema_field_with_dict_type_does_not_cause_crash() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -230,6 +233,7 @@ fn schema_field_with_dict_type_does_not_cause_crash() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 

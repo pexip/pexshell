@@ -238,7 +238,7 @@ async fn main() {
 
     let stdout = std::io::stdout();
     let is_stdout_interactive = stdout.is_terminal();
-    let console = Console::new(is_stdout_interactive, stdout);
+    let console = Console::new(is_stdout_interactive, stdout, std::io::stderr());
 
     let env: HashMap<String, String> = std::env::vars().collect();
 
@@ -264,7 +264,12 @@ pub async fn run_with(
     env: HashMap<String, String>,
     dirs: &Directories,
     stdout_wrapper: impl std::io::Write + Send + 'static,
+    stderr_wrapper: impl std::io::Write + Send + 'static,
 ) -> anyhow::Result<()> {
-    let mut pexshell = pexshell::PexShell::new(dirs, Console::new(false, stdout_wrapper), env);
+    let mut pexshell = pexshell::PexShell::new(
+        dirs,
+        Console::new(false, stdout_wrapper, stderr_wrapper),
+        env,
+    );
     pexshell.run(args.to_vec()).await
 }

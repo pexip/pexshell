@@ -573,7 +573,11 @@ mod tests {
         let config = "";
         let config_path = work_dir.join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
         std::fs::write(&config_path, config).unwrap();
 
         // Act
@@ -600,7 +604,11 @@ mod tests {
         let config = b"\xf0\x28\x8c\x28";
         let config_path = work_dir.join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
         std::fs::write(&config_path, config).unwrap();
 
         // Act
@@ -643,7 +651,11 @@ mod tests {
         "#;
         let config_path = work_dir.join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
         std::fs::write(&config_path, config).unwrap();
 
         // Act
@@ -721,7 +733,11 @@ mod tests {
         let config_path = test_context.get_test_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -771,7 +787,11 @@ last_used = 1192778584
         let config_path = test_context.get_test_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -810,7 +830,11 @@ last_used = 1192778584
         let config_path = test_context.get_test_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -862,7 +886,11 @@ last_used = 1192778584
         let config_path = test_context.get_test_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -927,7 +955,11 @@ current_user = true
         let config_path = test_context.get_test_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
         let keyring = credentials::MockProvider::new();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -1012,7 +1044,11 @@ current_user = true
             )
             .once()
             .return_once(|_, _, _| Ok(()));
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -1094,7 +1130,11 @@ current_user = true
             )
             .once()
             .return_once(|_, _, _| Err(keyring::Error::NoEntry));
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mut mgr = Manager::with_config_and_keyring(
             config,
@@ -1142,7 +1182,11 @@ current_user = true
         let config = Config::new(&dirs);
         let config_path = test_context.get_config_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
@@ -1192,7 +1236,11 @@ current_user = true
         };
         let config_path = test_context.get_config_dir().join("config.toml");
         let lock_path = test_context.get_test_dir().join("config.lock");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
         let mgr = Manager::with_config_and_keyring(
             config,
             &config_path,
@@ -1235,7 +1283,11 @@ current_user = true
                 String::from("super_secret_password"),
             ),
         ]);
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mgr = Manager::with_config_and_keyring(
             config,
@@ -1294,7 +1346,11 @@ current_user = true
             .iter()
             .map(|&(k, v)| (k.to_owned(), v.to_owned()))
             .collect::<HashMap<_, _>>();
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mgr = Manager::with_config_and_keyring(
             config,
@@ -1350,7 +1406,11 @@ current_user = true
             ),
             (String::from("PEXSHELL_USERNAME"), String::from("admin")),
         ]);
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
+        );
 
         let mgr = Manager::with_config_and_keyring(
             config,

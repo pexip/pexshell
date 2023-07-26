@@ -370,7 +370,7 @@ mod tests {
 
         let backend = MockInteract::new();
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out.clone());
+        let mut console = Console::new(false, out.clone(), VirtualFile::new());
 
         let mut login = Login::new(backend);
 
@@ -446,7 +446,7 @@ mod tests {
             .return_const(());
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact
@@ -515,7 +515,7 @@ mod tests {
             .return_const(());
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact
@@ -619,7 +619,7 @@ mod tests {
         }
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact
