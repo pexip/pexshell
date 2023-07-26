@@ -165,7 +165,11 @@ impl<'a> PexShell<'a> {
                     );
                 }
 
-                writeln!(self.console.stderr(), "{}", error.render())?;
+                if self.console.is_stderr_interactive() {
+                    writeln!(self.console.stderr(), "{}", error.render().ansi())?;
+                } else {
+                    writeln!(self.console.stderr(), "{}", error.render())?;
+                }
                 std::process::exit(error.exit_code());
             }
         };
@@ -263,6 +267,7 @@ mod tests {
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         assert!(!config_path.exists());

@@ -576,6 +576,7 @@ mod tests {
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         std::fs::write(&config_path, config).unwrap();
@@ -607,6 +608,7 @@ mod tests {
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         std::fs::write(&config_path, config).unwrap();
@@ -654,6 +656,7 @@ mod tests {
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         std::fs::write(&config_path, config).unwrap();
@@ -736,6 +739,7 @@ mod tests {
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -790,6 +794,7 @@ last_used = 1192778584
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -833,6 +838,7 @@ last_used = 1192778584
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -889,6 +895,7 @@ last_used = 1192778584
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -958,6 +965,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -1047,6 +1055,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -1133,6 +1142,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -1185,6 +1195,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         let mgr = Manager::with_config_and_keyring(
@@ -1239,6 +1250,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
         let mgr = Manager::with_config_and_keyring(
@@ -1286,6 +1298,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -1349,6 +1362,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
@@ -1409,6 +1423,7 @@ current_user = true
         let mut console = Console::new(
             false,
             test_context.get_stdout_wrapper(),
+            false,
             test_context.get_stderr_wrapper(),
         );
 
