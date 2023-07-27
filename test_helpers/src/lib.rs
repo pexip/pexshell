@@ -133,7 +133,6 @@ impl Drop for TestContext {
                  {:?}.",
                 &self.test_dir
             );
-            self.logger().clear();
         } else {
             self.logger().verify();
             if self.clean_up && self.test_dir.exists() {
