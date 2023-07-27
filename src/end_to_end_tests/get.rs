@@ -44,6 +44,7 @@ fn get_conference_config() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 

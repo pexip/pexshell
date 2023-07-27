@@ -15,20 +15,33 @@ use log::{debug, warn};
 use serde_json::{json, Map, Value};
 
 pub struct Console {
-    is_interactive: bool,
+    is_stdout_interactive: bool,
+    is_stderr_interactive: bool,
     stdout: Box<dyn Write + Send>,
+    stderr: Box<dyn Write + Send>,
 }
 
 impl Console {
-    pub fn new<Out: Write + Send + 'static>(is_interactive: bool, stdout: Out) -> Self {
+    pub fn new<Out: Write + Send + 'static, Error: Write + Send + 'static>(
+        is_stdout_interactive: bool,
+        stdout: Out,
+        is_stderr_interactive: bool,
+        stderr: Error,
+    ) -> Self {
         Self {
-            is_interactive,
+            is_stdout_interactive,
             stdout: Box::new(stdout),
+            is_stderr_interactive,
+            stderr: Box::new(stderr),
         }
     }
 
-    pub const fn is_interactive(&self) -> bool {
-        self.is_interactive
+    pub const fn is_stdout_interactive(&self) -> bool {
+        self.is_stdout_interactive
+    }
+
+    pub const fn is_stderr_interactive(&self) -> bool {
+        self.is_stderr_interactive
     }
 
     pub fn display_warning(&mut self, message: &str) {
@@ -37,7 +50,7 @@ impl Console {
             static ref STYLE: console::Style = console::Style::new().fg(console::Color::Yellow);
         }
         writeln!(
-            self.stdout,
+            self.stderr,
             "{}",
             STYLE.apply_to(format!("Warning: {message}"))
         )
@@ -45,7 +58,7 @@ impl Console {
     }
 
     pub fn pretty_print_json(&mut self, json: &Value) {
-        let pretty = if self.is_interactive() {
+        let pretty = if self.is_stdout_interactive() {
             debug!("Stdout is a terminal - pretty-printing json in colour");
             to_coloured_json_auto(json).unwrap()
         } else {
@@ -53,6 +66,10 @@ impl Console {
             serde_json::to_string_pretty(json).unwrap()
         };
         writeln!(&mut self.stdout, "{pretty}").unwrap();
+    }
+
+    pub fn stderr(&mut self) -> &mut (dyn Write + Send) {
+        &mut self.stderr
     }
 }
 

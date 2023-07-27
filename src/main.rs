@@ -233,12 +233,13 @@ async fn main() {
     });
 
     let args: Vec<String> = std::env::args().collect();
-    let is_stderr_interactive = std::io::stderr().is_terminal();
     let dirs = Directories::default();
 
     let stdout = std::io::stdout();
+    let stderr = std::io::stderr();
     let is_stdout_interactive = stdout.is_terminal();
-    let console = Console::new(is_stdout_interactive, stdout);
+    let is_stderr_interactive = stderr.is_terminal();
+    let console = Console::new(is_stdout_interactive, stdout, is_stderr_interactive, stderr);
 
     let env: HashMap<String, String> = std::env::vars().collect();
 
@@ -264,7 +265,12 @@ pub async fn run_with(
     env: HashMap<String, String>,
     dirs: &Directories,
     stdout_wrapper: impl std::io::Write + Send + 'static,
+    stderr_wrapper: impl std::io::Write + Send + 'static,
 ) -> anyhow::Result<()> {
-    let mut pexshell = pexshell::PexShell::new(dirs, Console::new(false, stdout_wrapper), env);
+    let mut pexshell = pexshell::PexShell::new(
+        dirs,
+        Console::new(false, stdout_wrapper, false, stderr_wrapper),
+        env,
+    );
     pexshell.run(args.to_vec()).await
 }

@@ -233,7 +233,7 @@ impl<Backend: Interact> Login<Backend> {
         for user in config.get_users() {
             let mut user_ident = combine_username(user, local_timezone());
             if user.current_user {
-                if console.is_interactive() {
+                if console.is_stdout_interactive() {
                     user_ident = console::Style::new()
                         .fg(console::Color::Green)
                         .apply_to(user_ident)
@@ -370,7 +370,7 @@ mod tests {
 
         let backend = MockInteract::new();
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out.clone());
+        let mut console = Console::new(false, out.clone(), false, VirtualFile::new());
 
         let mut login = Login::new(backend);
 
@@ -446,7 +446,7 @@ mod tests {
             .return_const(());
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, false, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact
@@ -515,7 +515,7 @@ mod tests {
             .return_const(());
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, false, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact
@@ -619,7 +619,7 @@ mod tests {
         }
 
         let out = VirtualFile::new();
-        let mut console = Console::new(false, out);
+        let mut console = Console::new(false, out, false, VirtualFile::new());
         let mut login = Login::new(backend);
         login
             .interact

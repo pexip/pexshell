@@ -164,7 +164,13 @@ impl<'a> PexShell<'a> {
                         "schema cache is missing - please generate it with: pexshell cache",
                     );
                 }
-                error.exit()
+
+                if self.console.is_stderr_interactive() {
+                    writeln!(self.console.stderr(), "{}", error.render().ansi())?;
+                } else {
+                    writeln!(self.console.stderr(), "{}", error.render())?;
+                }
+                std::process::exit(error.exit_code());
             }
         };
 
@@ -258,7 +264,12 @@ mod tests {
         let test_context = get_test_context();
         let dirs = test_context.get_directories();
         let config_path = dirs.config_dir.join("config.toml");
-        let mut console = Console::new(false, test_context.get_stdout_wrapper());
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            false,
+            test_context.get_stderr_wrapper(),
+        );
         assert!(!config_path.exists());
 
         // Act

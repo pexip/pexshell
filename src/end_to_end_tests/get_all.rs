@@ -51,6 +51,7 @@ fn get_returns_zero_objects() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -102,6 +103,7 @@ fn get_returns_page() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -198,6 +200,7 @@ fn get_multiple_pages() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
@@ -275,6 +278,7 @@ fn get_limited_to_first_page() {
             HashMap::default(),
             &test_context.get_directories(),
             test_context.get_stdout_wrapper(),
+            test_context.get_stderr_wrapper(),
         ))
         .unwrap();
 
