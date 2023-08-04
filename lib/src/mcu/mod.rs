@@ -1,7 +1,7 @@
 mod error;
 pub mod schema;
 
-use std::fmt::{self, Display};
+use std::fmt;
 use std::sync::Arc;
 use std::{collections::HashMap, error::Error};
 
@@ -13,6 +13,7 @@ use log::{debug, info, trace, warn};
 use serde::Deserialize;
 use serde_json::Value;
 use strum::{Display, EnumIter, IntoEnumIterator};
+use thiserror::Error;
 use tokio::sync::Semaphore;
 
 pub use error::*;
@@ -408,38 +409,14 @@ impl ApiClient {
     }
 }
 
+#[derive(Error)]
 pub enum ApiClientError {
-    Web(reqwest::Error),
-    Json(std::io::Error),
-    ApiError(ApiError),
-}
-
-impl From<reqwest::Error> for ApiClientError {
-    fn from(e: reqwest::Error) -> Self {
-        Self::Web(e)
-    }
-}
-
-impl From<serde_json::Error> for ApiClientError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(std::io::Error::from(e))
-    }
-}
-
-impl From<ApiError> for ApiClientError {
-    fn from(e: ApiError) -> Self {
-        Self::ApiError(e)
-    }
-}
-
-impl Display for ApiClientError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Web(e) => e.fmt(f),
-            Self::Json(e) => e.fmt(f),
-            Self::ApiError(e) => e.fmt(f),
-        }
-    }
+    #[error(transparent)]
+    Web(#[from] reqwest::Error),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    ApiError(#[from] ApiError),
 }
 
 impl std::fmt::Debug for ApiClientError {
@@ -448,34 +425,6 @@ impl std::fmt::Debug for ApiClientError {
             Self::Web(e) => std::fmt::Debug::fmt(&e, f),
             Self::Json(e) => std::fmt::Debug::fmt(&e, f),
             Self::ApiError(e) => std::fmt::Debug::fmt(&e, f),
-        }
-    }
-}
-
-impl std::error::Error for ApiClientError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::Web(e) => e.source(),
-            Self::Json(e) => e.source(),
-            Self::ApiError(e) => e.source(),
-        }
-    }
-
-    fn description(&self) -> &str {
-        #[allow(deprecated)]
-        match self {
-            Self::Web(e) => e.description(),
-            Self::Json(e) => e.description(),
-            Self::ApiError(e) => e.description(),
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        #[allow(deprecated)]
-        match self {
-            Self::Web(e) => e.cause(),
-            Self::Json(e) => e.cause(),
-            Self::ApiError(e) => e.cause(),
         }
     }
 }
