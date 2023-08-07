@@ -23,7 +23,7 @@ use lazy_static::lazy_static;
 use lib::{
     error,
     mcu::{self, schema, Api},
-    util::SimpleLogger,
+    util::{LogHandler, SimpleLogger},
 };
 use log::{error, warn, LevelFilter};
 use parking_lot::RwLock;
@@ -32,6 +32,7 @@ use serde_json::Value;
 use simple_signal::Signal;
 use std::{collections::HashMap, path::PathBuf};
 use tokio::io::AsyncReadExt;
+use tracing_subscriber::FmtSubscriber;
 
 #[cfg(unix)]
 use crate::consts::EXIT_CODE_INTERRUPTED;
@@ -219,6 +220,8 @@ async fn main() {
         static ref ERROR_STYLE: console::Style = console::Style::new().fg(console::Color::Red);
         static ref PLAIN_STYLE: console::Style = console::Style::new();
     }
+    let log_handler = LogHandler::default();
+    let subscriber = FmtSubscriber::builder().with_writer(log_handler.clone());
     log::set_max_level(LevelFilter::max());
     log::set_logger(&*LOGGER).expect("this can only fail if a logger has already been set");
 

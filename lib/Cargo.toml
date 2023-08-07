@@ -30,6 +30,8 @@ serde_json = "1.0.104"
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.44"
 tokio = { version = "1.29.1", features = ["fs"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"
 zeroize = { version = "1.6.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
