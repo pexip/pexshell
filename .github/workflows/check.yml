@@ -31,14 +31,15 @@ jobs:
       - name: Check formatting
         run: rustc --version && cargo --version && cargo fmt --all --check
 
-  sort:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/prepare
-        with:
-          cache-id: nobuild
-          cargo-install: cargo-sort
-      - run: cargo sort --check --workspace
+  # Disabled due to https://github.com/DevinR528/cargo-sort/issues/47
+  # sort:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: ./.github/actions/prepare
+  #       with:
+  #         cache-id: nobuild
+  #         cargo-install: cargo-sort
+  #     - run: cargo sort --check --workspace

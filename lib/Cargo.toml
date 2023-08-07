@@ -11,33 +11,29 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-async-stream = "0.3.5"
-async-trait = "0.1.72"
-chrono = { version = "0.4.26", features = [
-    "std",
-    "clock",
-    "serde",
-], default-features = false } # for timestamps
-console = "0.15.7" # colour stderr logging
-futures = { version = "0.3.28", features = ["executor"] }
-hyper = "0.14.27"
-log = { version = "0.4.19", features = ["std"] }
-parking_lot = "0.12.1"
-reqwest = { version = "0.11.18", default-features = false, features = ["json"] }
-serde = { version = "1.0.179", features = ["derive"] }
-serde_json = "1.0.104"
+anyhow.workspace = true
+async-stream.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+console.workspace = true
+futures.workspace = true
+hyper.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 strum = { version = "0.25.0", features = ["derive"] }
-thiserror = "1.0.44"
-tokio = { version = "1.29.1", features = ["fs"] }
-zeroize = { version = "1.6.0", features = ["zeroize_derive"] }
+thiserror = "1.0"
+tokio = { workspace = true, features = ["fs"] }
+zeroize = { version = "1.6", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 derive_more = "0.99.17"
-httptest = "0.15.4"
-test-case = "3.1.0"
+httptest.workspace = true
+test-case.workspace = true
 test_helpers = { path = "../test_helpers" }
-uuid = { version = "1.4.1", features = ["v4"] }
+uuid.workspace = true
 
 [features]
 all_logs = []
