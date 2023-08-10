@@ -5,6 +5,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   native:
@@ -36,7 +38,7 @@ jobs:
           artifact-name: ${{ matrix.target }}
           path-nix: target/${{ matrix.target }}/release/pexshell
           path-windows: target/${{ matrix.target }}/release/pexshell.exe
-     
+
   cross:
     strategy:
       matrix:
