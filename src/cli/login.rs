@@ -50,7 +50,7 @@ impl Interact for Interactive {
             .default(default)
             .items(items)
             .interact()
-            .map_err(|e| {
+            .map_err(|dialoguer::Error::IO(e)| {
                 if e.kind() == std::io::ErrorKind::Interrupted {
                     error!("interactive select operation interrupted - exiting");
                     _ = console::Term::stderr().show_cursor();
