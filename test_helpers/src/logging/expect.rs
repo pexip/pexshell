@@ -301,7 +301,7 @@ impl Debug for Predicate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Closure")
             .field("description", &self.description)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -452,7 +452,7 @@ impl Debug for Set {
                     })
                     .collect::<Vec<_>>(),
             )
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -500,7 +500,7 @@ impl Debug for AnySet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnySet")
             .field("expectations", &self.expectations)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -559,7 +559,7 @@ impl Debug for Group {
                     })
                     .collect::<Vec<_>>(),
             )
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -616,7 +616,7 @@ impl Debug for AnyGroup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnyGroup")
             .field("expectations", &self.expectations)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
