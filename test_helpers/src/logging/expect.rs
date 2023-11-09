@@ -301,7 +301,7 @@ impl Debug for Predicate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Closure")
             .field("description", &self.description)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -452,7 +452,7 @@ impl Debug for Set {
                     })
                     .collect::<Vec<_>>(),
             )
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -500,7 +500,7 @@ impl Debug for AnySet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnySet")
             .field("expectations", &self.expectations)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -559,7 +559,7 @@ impl Debug for Group {
                     })
                     .collect::<Vec<_>>(),
             )
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -616,7 +616,7 @@ impl Debug for AnyGroup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnyGroup")
             .field("expectations", &self.expectations)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -912,37 +912,43 @@ mod tests {
 
         #[test]
         fn test_set_macro() {
-            assert_eq!(format!("{:?}", set!()), "Set { unmet_expectations: [] }");
+            assert_eq!(
+                format!("{:?}", set!()),
+                "Set { unmet_expectations: [], .. }"
+            );
             assert_eq!(
                 format!("{:?}", set!(super::contains("abc"))),
-                "Set { unmet_expectations: [Contains { substring: \"abc\" }] }"
+                "Set { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
             );
             assert_eq!(
             format!("{:?}", set!(super::contains("abc"), super::contains("def"))),
-            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
         );
 
             assert_eq!(
             format!("{:?}", set!(super::contains("abc"), super::contains("def"), set!(),)),
-            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Set { unmet_expectations: [] }] }"
+            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Set { unmet_expectations: [], .. }], .. }"
         );
         }
 
         #[test]
         fn test_any_set_macro() {
-            assert_eq!(format!("{:?}", any_set!()), "AnySet { expectations: [] }");
+            assert_eq!(
+                format!("{:?}", any_set!()),
+                "AnySet { expectations: [], .. }"
+            );
             assert_eq!(
                 format!("{:?}", any_set!(super::contains("abc"))),
-                "AnySet { expectations: [Contains { substring: \"abc\" }] }"
+                "AnySet { expectations: [Contains { substring: \"abc\" }], .. }"
             );
             assert_eq!(
             format!("{:?}", any_set!(super::contains("abc"), super::contains("def"))),
-            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
         );
 
             assert_eq!(
             format!("{:?}", any_set!(super::contains("abc"), super::contains("def"), any_set!(),)),
-            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, AnySet { expectations: [] }] }"
+            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, AnySet { expectations: [], .. }], .. }"
         );
         }
 
@@ -950,20 +956,20 @@ mod tests {
         fn test_group_macro() {
             assert_eq!(
                 format!("{:?}", group!()),
-                "Group { unmet_expectations: [] }"
+                "Group { unmet_expectations: [], .. }"
             );
             assert_eq!(
                 format!("{:?}", group!(super::contains("abc"))),
-                "Group { unmet_expectations: [Contains { substring: \"abc\" }] }"
+                "Group { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
             );
             assert_eq!(
             format!("{:?}", group!(super::contains("abc"), super::contains("def"))),
-            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
         );
 
             assert_eq!(
             format!("{:?}", group!(super::contains("abc"), super::contains("def"), group!(),)),
-            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Group { unmet_expectations: [] }] }"
+            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Group { unmet_expectations: [], .. }], .. }"
         );
         }
 
@@ -971,11 +977,11 @@ mod tests {
         fn test_predicate_macro() {
             assert_eq!(
                 format!("{:?}", predicate!(|_| true)),
-                "Closure { description: \"|_| true\" }"
+                "Closure { description: \"|_| true\", .. }"
             );
             assert_eq!(
                 format!("{:?}", predicate!(|x| x.line().unwrap() > 0)),
-                "Closure { description: \"|x| x.line().unwrap() > 0\" }"
+                "Closure { description: \"|x| x.line().unwrap() > 0\", .. }"
             );
         }
     }

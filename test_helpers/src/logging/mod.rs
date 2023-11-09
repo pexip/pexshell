@@ -140,6 +140,7 @@ impl TestLogger {
         self.expectations.lock().push(Box::new(expectation));
     }
 
+    #[allow(clippy::significant_drop_tightening)]
     fn verify(&self) {
         let expectations = self.expectations.lock();
         if expectations.is_empty() {
