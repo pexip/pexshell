@@ -50,7 +50,7 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: debug-build
-          rust-version: 1.64.0
+          rust-version: 1.66
           cargo-install: --locked:--vers:0.9.50:cargo-nextest
       - name: Build
         run: cargo build --workspace --locked --verbose
