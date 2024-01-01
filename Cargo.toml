@@ -24,7 +24,7 @@ tokio = "1.29"
 toml = "0.7.6"
 
 # dev & test dependencies
-http = "0.2.9"
+http = "0.2.11"
 httptest = "0.15.4"
 mockall = "0.11.4"
 test-case = "3.3"
