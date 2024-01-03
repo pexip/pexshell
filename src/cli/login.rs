@@ -119,7 +119,7 @@ async fn test_request(
         config.get_password_for_user(user)?,
     );
 
-    match api_client
+    let ApiResponse::ContentStream(mut stream) = api_client
         .send(ApiRequest::GetAll {
             api: Api::Status,
             resource: String::from("worker_vm"),
@@ -130,22 +130,20 @@ async fn test_request(
         })
         .await
         .map_err(|e| error::UserFriendly::new(e.to_string()))?
-    {
-        ApiResponse::ContentStream(mut stream) => {
-            // try and get the first element of the stream -
-            // if there are no errors, then the credentials must be correct
-            let _first = stream.try_next().await.map_err(|e| match e {
-                ApiClientError::ApiError(e) if e.status() == Some(StatusCode::UNAUTHORIZED) => {
-                    error::UserFriendly::new("login failed - credentials may be incorrect?")
-                }
-                // TODO: Diagnose other common errors (e.g. typo in address)
-                e => error::UserFriendly::new(e.to_string()),
-            })?;
-
-            Ok(())
+    else {
+        unreachable!("a get_all request should always return a content stream")
+    };
+    // try and get the first element of the stream -
+    // if there are no errors, then the credentials must be correct
+    let _first = stream.try_next().await.map_err(|e| match e {
+        ApiClientError::ApiError(e) if e.status() == Some(StatusCode::UNAUTHORIZED) => {
+            error::UserFriendly::new("login failed - credentials may be incorrect?")
         }
-        _ => panic!(),
-    }
+        // TODO: Diagnose other common errors (e.g. typo in address)
+        e => error::UserFriendly::new(e.to_string()),
+    })?;
+
+    Ok(())
 }
 
 pub struct Login<Backend: Interact> {

@@ -30,6 +30,7 @@ pub struct User {
     #[cfg(test)]
     pub password: Option<SensitiveString>,
     #[serde(default, skip_serializing_if = "Not::not")]
+    #[allow(clippy::struct_field_names)]
     pub current_user: bool,
     #[serde(with = "ts_seconds_option", default)]
     pub last_used: Option<DateTime<Utc>>,
