@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::{collections::HashMap, error::Error};
 
 use async_stream::try_stream;
-use async_trait::async_trait;
 use futures::stream::StreamExt;
 use futures::Stream;
 use log::{debug, info, trace, warn};
@@ -102,7 +101,6 @@ impl Default for CommandApi {
     }
 }
 
-#[async_trait]
 pub trait IApiClient {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
@@ -434,7 +432,6 @@ struct JsonError {
     error: String,
 }
 
-#[async_trait]
 #[allow(clippy::no_effect_underscore_binding)]
 impl IApiClient for ApiClient {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {

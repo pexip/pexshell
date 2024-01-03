@@ -1615,7 +1615,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-stream",
- "async-trait",
  "chrono",
  "console",
  "derive_more",
@@ -1643,7 +1642,6 @@ dependencies = [
  "anyhow",
  "assert-panic",
  "async-stream",
- "async-trait",
  "chrono",
  "clap",
  "clap_complete",

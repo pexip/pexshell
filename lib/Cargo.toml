@@ -13,7 +13,6 @@ path = "src/lib.rs"
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
-async-trait.workspace = true
 chrono.workspace = true
 console.workspace = true
 futures.workspace = true
