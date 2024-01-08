@@ -47,10 +47,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: SebRollen/toml-action@v1.0.2
+        id: msrv
+        with:
+          file: 'Cargo.toml'
+          field: 'package.rust-version'
       - uses: ./.github/actions/prepare
         with:
           cache-id: debug-build
-          rust-version: 1.66
+          rust-version: ${{ steps.msrv.outputs.value }}
           cargo-install: --locked:--vers:0.9.50:cargo-nextest
       - name: Build
         run: cargo build --workspace --locked --verbose

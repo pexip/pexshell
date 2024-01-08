@@ -37,7 +37,7 @@ version = "0.1.0"
 edition = "2021"
 autotests = false
 autobins = false
-rust-version = "1.64"
+rust-version = "1.66"
 license = "BSD-3-Clause"
 
 [[bin]]
