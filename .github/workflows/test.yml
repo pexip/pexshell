@@ -56,7 +56,7 @@ jobs:
         with:
           cache-id: debug-build
           rust-version: ${{ steps.msrv.outputs.value }}
-          cargo-install: --locked:--vers:0.9.50:cargo-nextest
+          cargo-install: cargo-nextest
       - name: Build
         run: cargo build --workspace --locked --verbose
       - name: Test
