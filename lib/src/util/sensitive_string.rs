@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "not implemented")]
     fn test_de_error_custom() {
         let _error = DeError::custom("some error message");
     }
