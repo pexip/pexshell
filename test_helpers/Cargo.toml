@@ -7,7 +7,7 @@ license = "BSD-3-Clause"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-base64 = "0.21.5"
+base64 = "0.21.7"
 chrono.workspace = true
 console.workspace = true
 http.workspace = true
