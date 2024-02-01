@@ -50,7 +50,7 @@ anyhow.workspace = true
 async-stream.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
-clap = { version = "4.3", features = ["wrap_help", "string"] }
+clap = { version = "4.4", features = ["wrap_help", "string"] }
 clap_complete = "4.3"
 clap_complete_nushell = "4.3"
 colored_json = "3.2"
