@@ -80,13 +80,9 @@ runs:
       shell: bash
     - name: Install dependencies
       if: inputs.cargo-install != ''
-      run: |
-        for crate in ${crates//,/ }; do
-          cargo install ${crate//:/ }
-        done
-      env:
-        crates: ${{ inputs.cargo-install }}
-      shell: bash
+      uses: taiki-e/install-action@v2
+      with:
+        tool: ${{ inputs.cargo-install }}
     - name: "Install musl"
       if: runner.os == 'Linux'
       run: sudo apt-get install -y musl musl-dev musl-tools
