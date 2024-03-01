@@ -51,7 +51,7 @@ jobs:
         id: msrv
         with:
           file: 'Cargo.toml'
-          field: 'package.rust-version'
+          field: 'workspace.package.rust-version'
       - uses: ./.github/actions/prepare
         with:
           cache-id: debug-build
