@@ -59,7 +59,7 @@ chrono.workspace = true
 clap = { version = "4.4", features = ["wrap_help", "string"] }
 clap_complete = "4.4"
 clap_complete_nushell = "4.4"
-colored_json = "3.2"
+colored_json = "4.1.0"
 console.workspace = true
 dialoguer = { version = "0.11.0", features = ["fuzzy-select"] }
 directories = "5.0"
