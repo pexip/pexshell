@@ -23,7 +23,7 @@ parking_lot.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { version = "0.26.1", features = ["derive"] }
 thiserror = "1.0"
 tokio = { workspace = true, features = ["fs"] }
 zeroize = { version = "1.7", features = ["zeroize_derive"] }

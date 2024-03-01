@@ -2,6 +2,7 @@ mod error;
 pub mod schema;
 
 use std::fmt;
+use std::iter::FusedIterator;
 use std::sync::Arc;
 use std::{collections::HashMap, error::Error};
 
@@ -28,8 +29,16 @@ pub enum CommandApi {
     Platform,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+static API_VARIANTS: &[Api] = &[
+    Api::Command(CommandApi::Conference),
+    Api::Command(CommandApi::Participant),
+    Api::Command(CommandApi::Platform),
+    Api::Configuration,
+    Api::History,
+    Api::Status,
+];
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Api {
     Command(CommandApi),
     Configuration,
@@ -42,15 +51,7 @@ impl IntoEnumIterator for Api {
 
     fn iter() -> Self::Iterator {
         IntoApiIter {
-            items: Box::new([
-                Self::Configuration,
-                Self::History,
-                Self::Status,
-                Self::Command(CommandApi::Conference),
-                Self::Command(CommandApi::Participant),
-                Self::Command(CommandApi::Platform),
-            ]),
-            current: 0,
+            inner: API_VARIANTS.iter().copied(),
         }
     }
 }
@@ -68,24 +69,32 @@ impl fmt::Display for Api {
     }
 }
 
+#[derive(Clone)]
 pub struct IntoApiIter {
-    items: Box<[Api]>,
-    current: usize,
+    inner: std::iter::Copied<std::slice::Iter<'static, Api>>,
 }
 
 impl Iterator for IntoApiIter {
     type Item = Api;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current == self.items.len() {
-            None
-        } else {
-            let res = self.items[self.current];
-            self.current += 1;
-            Some(res)
-        }
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
     }
 }
+
+impl FusedIterator for IntoApiIter {}
+
+impl DoubleEndedIterator for IntoApiIter {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back()
+    }
+}
+
+impl ExactSizeIterator for IntoApiIter {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RequestType {
