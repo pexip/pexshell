@@ -15,7 +15,7 @@ runs:
   steps:
     - name: Upload build [-nix]
       if: runner.os != 'Windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name}}
         path: ${{ inputs.path-nix }}
@@ -23,7 +23,7 @@ runs:
         if-no-files-found: error
     - name: Upload build [Windows]
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name}}
         path: ${{ inputs.path-windows }}
