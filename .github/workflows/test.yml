@@ -12,7 +12,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
@@ -24,14 +24,14 @@ jobs:
       - name: Run tests
         run: cargo llvm-cov --workspace --locked nextest --html --features ci
       - name: Upload test report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: report
           path: target/nextest/default/report.xml
           retention-days: 30
       - name: Upload coverage results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage
@@ -44,10 +44,10 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: SebRollen/toml-action@v1.0.2
+      - uses: SebRollen/toml-action@v1.2.0
         id: msrv
         with:
           file: 'Cargo.toml'

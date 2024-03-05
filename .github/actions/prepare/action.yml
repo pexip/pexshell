@@ -20,7 +20,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: mozilla-actions/sccache-action@v0.0.3
+    - uses: mozilla-actions/sccache-action@v0.0.4
     - id: toolchain
       uses: dtolnay/rust-toolchain@master
       with:
@@ -48,14 +48,14 @@ runs:
       env:
         crates: ${{ inputs.cargo-install }}
       shell: python3 {0}
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry/index/
         key: regindex-${{ runner.os }}-${{ steps.vars.outputs.CURRENT_DATE }}
         restore-keys: |
           regindex-${{ runner.os }}-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -66,7 +66,7 @@ runs:
         key: deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-${{ steps.vars.outputs.CURRENT_DATE }}
         restore-keys: |
           deps-${{ runner.os }}-${{ steps.vars.outputs.CRATES_HASH }}-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           target/

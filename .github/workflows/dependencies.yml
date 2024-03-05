@@ -12,7 +12,7 @@ jobs:
   advisories:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
@@ -25,7 +25,7 @@ jobs:
   bans:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
@@ -38,7 +38,7 @@ jobs:
   licences:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
@@ -48,7 +48,7 @@ jobs:
       - name: Generate license summary
         run: cargo about generate about.hbs > licences.html
       - name: Upload test report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: third-party-licences
           path: licences.html
@@ -57,7 +57,7 @@ jobs:
   sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare
