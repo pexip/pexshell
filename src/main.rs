@@ -30,7 +30,7 @@ use parking_lot::RwLock;
 use serde_json::Value;
 #[cfg(unix)]
 use simple_signal::Signal;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 use tokio::io::AsyncReadExt;
 
 #[cfg(unix)]
@@ -214,7 +214,7 @@ impl Default for Directories {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> ExitCode {
     lazy_static! {
         static ref ERROR_STYLE: console::Style = console::Style::new().fg(console::Color::Red);
         static ref PLAIN_STYLE: console::Style = console::Style::new();
@@ -255,6 +255,9 @@ async fn main() {
             &*PLAIN_STYLE
         };
         eprintln!("{}", style.apply_to(e.to_string()));
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
