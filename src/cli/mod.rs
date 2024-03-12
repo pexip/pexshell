@@ -5,13 +5,13 @@ use std::io::Write;
 
 use clap::{ArgAction, ArgMatches, Command};
 use colored_json::to_colored_json_auto as to_coloured_json_auto;
-use lazy_static::lazy_static;
 use lib::mcu::schema::Methods::{Delete, Get, Patch, Post, Put};
 use lib::mcu::{
     schema::{Endpoint, Field, Type},
     Api,
 };
 use log::{debug, warn};
+use once_cell::sync::Lazy;
 use serde_json::{json, Map, Value};
 
 pub struct Console {
@@ -45,10 +45,11 @@ impl Console {
     }
 
     pub fn display_warning(&mut self, message: &str) {
+        static STYLE: Lazy<console::Style> =
+            Lazy::new(|| console::Style::new().fg(console::Color::Yellow));
+
         warn!("Displaying warning: {}", message);
-        lazy_static! {
-            static ref STYLE: console::Style = console::Style::new().fg(console::Color::Yellow);
-        }
+
         writeln!(
             self.stderr,
             "{}",

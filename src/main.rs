@@ -19,13 +19,13 @@ use clap::ArgMatches;
 use cli::Console;
 use git_version::git_version;
 use is_terminal::IsTerminal;
-use lazy_static::lazy_static;
 use lib::{
     error,
     mcu::{self, schema, Api},
     util::SimpleLogger,
 };
 use log::{error, warn, LevelFilter};
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde_json::Value;
 #[cfg(unix)]
@@ -38,11 +38,10 @@ use crate::consts::EXIT_CODE_INTERRUPTED;
 
 static ABORT_ON_INTERRUPT: RwLock<bool> = RwLock::new(true);
 
-lazy_static! {
-    static ref LOGGER: SimpleLogger =
-        SimpleLogger::new(None).expect("creating a logger without a file should not fail");
-    static ref VERSION: String = pexshell_version();
-}
+static LOGGER: Lazy<SimpleLogger> = Lazy::new(|| {
+    SimpleLogger::new(None).expect("creating a logger without a file should not fail")
+});
+static VERSION: Lazy<String> = Lazy::new(pexshell_version);
 
 /// Equivalent of `git describe --dirty=-modified | sed 's/-g/-/'`
 fn pexshell_version() -> String {
@@ -215,10 +214,6 @@ impl Default for Directories {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    lazy_static! {
-        static ref ERROR_STYLE: console::Style = console::Style::new().fg(console::Color::Red);
-        static ref PLAIN_STYLE: console::Style = console::Style::new();
-    }
     log::set_max_level(LevelFilter::max());
     log::set_logger(&*LOGGER).expect("this can only fail if a logger has already been set");
 
@@ -250,9 +245,9 @@ async fn main() -> ExitCode {
         error!("fatal error occurred: {e:?}");
 
         let style = if is_stderr_interactive {
-            &*ERROR_STYLE
+            console::Style::new().fg(console::Color::Red)
         } else {
-            &*PLAIN_STYLE
+            console::Style::new()
         };
         eprintln!("{}", style.apply_to(e.to_string()));
         ExitCode::FAILURE
