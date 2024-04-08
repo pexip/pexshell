@@ -17,7 +17,11 @@ pub async fn join_all_results<
 
 #[cfg(test)]
 mod tests {
-    use std::{future::ready, sync::Arc, task::Poll};
+    use std::{
+        future::{ready, Ready},
+        sync::Arc,
+        task::Poll,
+    };
 
     use parking_lot::Mutex;
     use test_helpers::future::MockFuture;
@@ -27,7 +31,7 @@ mod tests {
     #[test]
     fn test_join_all_results_successful() {
         // Arrange
-        let results = vec![ready::<Result<i32, ()>>(Ok(1)), ready(Ok(2)), ready(Ok(3))];
+        let results: [Ready<Result<i32, ()>>; 3] = [ready(Ok(1)), ready(Ok(2)), ready(Ok(3))];
 
         let runtime = tokio::runtime::Builder::new_current_thread()
             .build()
