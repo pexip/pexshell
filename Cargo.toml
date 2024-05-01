@@ -11,7 +11,7 @@ license = "BSD-3-Clause"
 anyhow = "1.0"
 async-stream = "0.3.5"
 async-trait = "0.1.80"
-chrono = { version = "0.4.33", features = [
+chrono = { version = "0.4.38", features = [
     "std",
     "clock",
     "serde",
