@@ -1,4 +1,5 @@
 use chrono::{Offset, TimeZone};
+use lib::mcu::auth::BasicAuth;
 use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::io::Write;
@@ -115,8 +116,7 @@ async fn test_request(
     let api_client = ApiClient::new(
         client,
         &user.address,
-        user.username.clone(),
-        config.get_password_for_user(user)?,
+        BasicAuth::new(user.username.clone(), config.get_password_for_user(user)?),
     );
 
     let ApiResponse::ContentStream(mut stream) = api_client

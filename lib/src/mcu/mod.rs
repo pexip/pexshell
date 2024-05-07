@@ -1,13 +1,14 @@
+pub mod auth;
 mod error;
 pub mod schema;
 
 use std::fmt;
+use std::future::Future;
 use std::iter::FusedIterator;
 use std::sync::Arc;
 use std::{collections::HashMap, error::Error};
 
 use async_stream::try_stream;
-use async_trait::async_trait;
 use futures::stream::StreamExt;
 use futures::Stream;
 use log::{debug, info, trace, warn};
@@ -19,7 +20,9 @@ use tokio::sync::Semaphore;
 
 pub use error::*;
 
-use crate::util::{self, SensitiveString};
+use crate::util;
+
+use self::auth::{ApiClientAuth, AuthWith};
 
 #[derive(EnumIter, Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
 #[strum(serialize_all = "snake_case")]
@@ -111,45 +114,43 @@ impl Default for CommandApi {
     }
 }
 
-#[async_trait]
 pub trait IApiClient {
-    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
+    fn send(&self, request: ApiRequest)
+        -> impl Future<Output = anyhow::Result<ApiResponse>> + Send;
 }
 
-#[derive(Debug, Clone)]
-pub struct ApiClient {
+pub struct ApiClient<Auth: ApiClientAuth + 'static> {
     http_client: reqwest::Client,
     base_address: String,
-    username: String,
-    password: SensitiveString,
+    auth: Arc<Auth>,
     semaphore: Arc<Semaphore>,
 }
 
-impl ApiClient {
+impl<Auth: ApiClientAuth> Clone for ApiClient<Auth> {
+    fn clone(&self) -> Self {
+        Self {
+            http_client: self.http_client.clone(),
+            base_address: self.base_address.clone(),
+            auth: self.auth.clone(),
+            semaphore: self.semaphore.clone(),
+        }
+    }
+}
+
+impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
     #[cfg(test)]
     #[must_use]
-    pub fn new_for_testing(
-        http_client: reqwest::Client,
-        mcu_address: String,
-        mcu_username: String,
-        mcu_password: SensitiveString,
-    ) -> Self {
+    pub fn new_for_testing(http_client: reqwest::Client, mcu_address: String, auth: Auth) -> Self {
         Self {
             http_client,
             base_address: mcu_address,
-            username: mcu_username,
-            password: mcu_password,
+            auth: Arc::new(auth),
             semaphore: Arc::new(Semaphore::new(5)),
         }
     }
 
     #[must_use]
-    pub fn new(
-        http_client: reqwest::Client,
-        mcu_address: &str,
-        mcu_username: String,
-        mcu_password: SensitiveString,
-    ) -> Self {
+    pub fn new(http_client: reqwest::Client, mcu_address: &str, auth: Auth) -> Self {
         let base_address = if mcu_address.starts_with("http://") {
             warn!("Using insecure http protocol!");
             String::from(mcu_address)
@@ -162,8 +163,7 @@ impl ApiClient {
         Self {
             http_client,
             base_address,
-            username: mcu_username,
-            password: mcu_password,
+            auth: Arc::new(auth),
             semaphore: Arc::new(Semaphore::new(5)), // This limit is fairly arbitrary, but too many requests causes the management node to get bogged down!
         }
     }
@@ -187,7 +187,8 @@ impl ApiClient {
         }
     }
 
-    fn build_request(&self, request: ApiRequest) -> Result<reqwest::Request, reqwest::Error> {
+    #[allow(clippy::too_many_lines)]
+    async fn build_request(&self, request: ApiRequest) -> Result<reqwest::Request, reqwest::Error> {
         match request {
             ApiRequest::Get {
                 api,
@@ -200,7 +201,8 @@ impl ApiClient {
                 info!("GET {}", &uri);
                 self.http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .build()
             }
             ApiRequest::GetAll {
@@ -223,7 +225,8 @@ impl ApiClient {
                 );
                 self.http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .query(&filter_args)
                     .build()
             }
@@ -238,7 +241,8 @@ impl ApiClient {
                 info!("POST {}", &uri);
                 self.http_client
                     .post(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .json(&args)
                     .build()
             }
@@ -254,7 +258,8 @@ impl ApiClient {
                 info!("PATCH {}", &uri);
                 self.http_client
                     .patch(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .json(&args)
                     .build()
             }
@@ -269,7 +274,8 @@ impl ApiClient {
                 info!("DELETE {}", &uri);
                 self.http_client
                     .delete(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .build()
             }
             ApiRequest::ApiSchema { api } => {
@@ -277,7 +283,8 @@ impl ApiClient {
                 debug!("API_SCHEMA {}", &uri);
                 self.http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .build()
             }
             ApiRequest::Schema { api, resource } => {
@@ -286,7 +293,8 @@ impl ApiClient {
                 debug!("SCHEMA {}", &uri);
                 self.http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&*self.auth)
+                    .await
                     .build()
             }
         }
@@ -368,7 +376,7 @@ impl ApiClient {
                 if limit == 0 {
                     limit = usize::MAX;
                 }
-                let mut request = client.build_request(api_request.clone())?;
+                let mut request = client.build_request(api_request.clone()).await?;
 
                 loop {
                     let _hold = client.semaphore.acquire().await.expect("semaphore should never be closed");
@@ -404,7 +412,7 @@ impl ApiClient {
                     if let Some(uri) = api_response.meta.next {
                         request = client.http_client
                                 .get(format!("{}{}", client.base_address, uri))
-                                .basic_auth(&client.username, Some(client.password.secret()))
+                                .auth_with(&*client.auth).await
                                 .build()?;
                     } else {
                         break;
@@ -443,9 +451,8 @@ struct JsonError {
     error: String,
 }
 
-#[async_trait]
 #[allow(clippy::no_effect_underscore_binding)]
-impl IApiClient for ApiClient {
+impl<Auth: ApiClientAuth + 'static> IApiClient for ApiClient<Auth> {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
         let is_command = matches!(
             request,
@@ -460,7 +467,7 @@ impl IApiClient for ApiClient {
                 Box::pin(stream_client.streamed_response(r)),
             )))
         } else {
-            let request = self.build_request(request).map_err(|e| {
+            let request = self.build_request(request).await.map_err(|e| {
                 ApiError::new(
                     e.status(),
                     format!("error building request: {e}"),
