@@ -3,12 +3,12 @@ mod error;
 pub mod schema;
 
 use std::fmt;
-use std::future::Future;
 use std::iter::FusedIterator;
 use std::sync::Arc;
 use std::{collections::HashMap, error::Error};
 
 use async_stream::try_stream;
+use async_trait::async_trait;
 use futures::stream::StreamExt;
 use futures::Stream;
 use log::{debug, info, trace, warn};
@@ -114,9 +114,9 @@ impl Default for CommandApi {
     }
 }
 
+#[async_trait]
 pub trait IApiClient {
-    fn send(&self, request: ApiRequest)
-        -> impl Future<Output = anyhow::Result<ApiResponse>> + Send;
+    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
 
 pub struct ApiClient<Auth: ApiClientAuth + 'static> {
@@ -452,6 +452,7 @@ struct JsonError {
 }
 
 #[allow(clippy::no_effect_underscore_binding)]
+#[async_trait]
 impl<Auth: ApiClientAuth + 'static> IApiClient for ApiClient<Auth> {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
         let is_command = matches!(

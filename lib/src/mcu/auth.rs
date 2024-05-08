@@ -3,30 +3,31 @@
 mod basic;
 mod oauth2;
 
+pub use self::oauth2::OAuth2;
+use async_trait::async_trait;
 pub use basic::BasicAuth;
-pub use oauth2::OAuth2;
 
 pub struct NoAuth;
 
+#[async_trait]
 impl ApiClientAuth for NoAuth {
     async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         request
     }
 }
 
+#[async_trait]
 pub trait ApiClientAuth: Send + Sync {
-    fn add_auth(
-        &self,
-        request: reqwest::RequestBuilder,
-    ) -> impl std::future::Future<Output = reqwest::RequestBuilder> + std::marker::Send;
+    async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
 }
 
 #[allow(opaque_hidden_inferred_bound)]
+#[async_trait]
 pub trait AuthWith: Send {
-    fn auth_with(self, auth: &impl ApiClientAuth)
-        -> impl std::future::Future<Output = Self> + Send;
+    async fn auth_with(self, auth: &impl ApiClientAuth) -> Self;
 }
 
+#[async_trait]
 impl AuthWith for reqwest::RequestBuilder {
     async fn auth_with(self, auth: &impl ApiClientAuth) -> Self {
         auth.add_auth(self).await

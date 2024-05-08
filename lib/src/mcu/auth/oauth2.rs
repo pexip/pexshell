@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::Header;
 use rand::Rng;
@@ -126,6 +127,7 @@ impl OAuth2 {
     }
 }
 
+#[async_trait]
 impl ApiClientAuth for OAuth2 {
     async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         let mut token = self.token.lock().await;
