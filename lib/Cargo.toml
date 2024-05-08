@@ -21,7 +21,6 @@ hex = "0.4.3"
 hyper.workspace = true
 jsonwebtoken = "9.2"
 log.workspace = true
-oauth2.workspace = true
 parking_lot.workspace = true
 rand = "0.8.5"
 reqwest.workspace = true

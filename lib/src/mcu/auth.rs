@@ -3,9 +3,9 @@
 mod basic;
 mod oauth2;
 
-pub use self::oauth2::OAuth2;
 use async_trait::async_trait;
 pub use basic::BasicAuth;
+pub use oauth2::OAuth2;
 
 pub struct NoAuth;
 
