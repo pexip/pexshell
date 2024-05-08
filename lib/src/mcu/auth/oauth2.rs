@@ -179,6 +179,24 @@ mod tests {
     async fn auth_with() {
         let mut server = httptest::Server::run();
 
+        let client = reqwest::Client::new();
+
+        #[rustfmt::skip]
+        let client_key = SensitiveString::from(
+r"-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgQdyCbYBe50EeXqxW
+5r9DHQGEfk9NPhC4k7pBWzh/liihRANCAAQ9/OCBrz6FL+OGFDOuJKhmNlIrXhnD
+Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
+-----END PRIVATE KEY-----
+"
+        );
+
+        let auth = OAuth2::new(
+            server.url("/oauth/token/").to_string(),
+            "test_client".to_string(),
+            client_key,
+        );
+
         // Test initial token retrieval and application
         server.expect(
             Expectation::matching(all_of![request::method_path("POST", "/oauth/token/")])
@@ -197,24 +215,6 @@ mod tests {
             .respond_with(json_encoded(json!({
                 "test": "response"
             }))),
-        );
-
-        let client = reqwest::Client::new();
-
-        #[rustfmt::skip]
-        let client_key = SensitiveString::from(
-r"-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgQdyCbYBe50EeXqxW
-5r9DHQGEfk9NPhC4k7pBWzh/liihRANCAAQ9/OCBrz6FL+OGFDOuJKhmNlIrXhnD
-Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
------END PRIVATE KEY-----
-"
-        );
-
-        let auth = OAuth2::new(
-            server.url("/oauth/token/").to_string(),
-            "test_client".to_string(),
-            client_key,
         );
 
         let request = client
