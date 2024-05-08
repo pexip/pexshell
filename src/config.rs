@@ -185,7 +185,7 @@ impl Manager {
         config_file_path: &Path,
         config_lock_file_path: &Path,
         env: HashMap<String, String>,
-        keyring: impl credentials::Provider + Send + 'static,
+        keyring: impl credentials::Provider + 'static,
         console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
         if let Some(parent) = config_file_path.parent() {
@@ -256,7 +256,7 @@ impl Manager {
         config_file_path: &Path,
         config_lock_file_path: &Path,
         env: HashMap<String, String>,
-        keyring: impl credentials::Provider + Send + 'static,
+        keyring: impl credentials::Provider + 'static,
         console: &mut Console,
     ) -> Result<Self, error::UserFriendly> {
         let mut file_lock = LockFile::open(config_lock_file_path)
