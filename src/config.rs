@@ -25,6 +25,7 @@ use mockall::mock;
 #[serde(untagged)]
 pub enum Credentials {
     Basic(BasicCredentials),
+    OAuth2(OAuth2Credentials),
 }
 
 impl Credentials {
@@ -32,6 +33,7 @@ impl Credentials {
     pub fn unique_id(&self) -> String {
         match self {
             Self::Basic(BasicCredentials { username, .. }) => format!("basic:{username}"),
+            Self::OAuth2(OAuth2Credentials { client_id, .. }) => format!("oauth2:{client_id}"),
         }
     }
 
@@ -39,6 +41,7 @@ impl Credentials {
     pub fn visual_id(&self) -> String {
         match self {
             Self::Basic(BasicCredentials { username, .. }) => username.to_owned(),
+            Self::OAuth2(OAuth2Credentials { client_id, .. }) => client_id.to_owned(),
         }
     }
 }
@@ -46,17 +49,31 @@ impl Credentials {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BasicCredentials {
     pub username: String,
-    #[cfg(not(test))]
-    password: Option<SensitiveString>,
-    #[cfg(test)]
     pub password: Option<SensitiveString>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OAuth2Token {
+    pub access_token: SensitiveString,
+    pub expiry: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OAuth2Credentials {
+    pub client_id: String,
+    pub private_key: Option<SensitiveString>,
+    pub token: Option<OAuth2Token>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub address: String,
+    #[cfg(test)]
     #[serde(flatten)]
     pub credentials: Credentials,
+    #[cfg(not(test))]
+    #[serde(flatten)]
+    credentials: Credentials,
     #[serde(default, skip_serializing_if = "Not::not")]
     #[allow(clippy::struct_field_names)]
     pub current_user: bool,
@@ -77,6 +94,7 @@ impl User {
         }
     }
 
+    #[allow(dead_code)]
     pub fn unique_id(&self) -> String {
         let credential = self.credentials.unique_id();
         let address = &self.address;
@@ -99,7 +117,7 @@ mock! {
         fn get_log_level(&self) -> Option<String>;
         fn get_log_to_stderr(&self) -> bool;
         fn get_current_user<'a>(&'a self) -> Result<&'a User, error::UserFriendly>;
-        fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+        fn get_credentials_for_user(&self, user: &User) -> Result<Credentials, error::UserFriendly>;
         fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
     }
 
@@ -133,8 +151,8 @@ pub trait Provider: Send + Sync {
     /// If the current user cannot be determined, this function will return an [`error::UserFriendly`].
     fn get_current_user(&self) -> Result<&User, error::UserFriendly>;
 
-    /// Retrieves the password of a user.
-    fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly>;
+    /// Retrieves the stored credentials of a user.
+    fn get_credentials_for_user(&self, user: &User) -> Result<Credentials, error::UserFriendly>;
 
     // Sets last used
     fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
@@ -149,7 +167,7 @@ pub trait Configurer: Send + Sync {
     fn add_user(
         &mut self,
         user: User,
-        store_password_in_plaintext: bool,
+        store_secrets_in_plaintext: bool,
     ) -> Result<(), error::UserFriendly>;
 
     /// Removes a user from the users list.
@@ -374,6 +392,7 @@ impl Manager {
                 (Some(env_address), Some(env_username)) => {
                     self.config.users.iter().position(|u| u.address == *env_address && match u.credentials {
                         Credentials::Basic(ref c) => c.username == *env_username,
+                        Credentials::OAuth2(_) => false,
                     })
                     .map_or_else(|| Err(error::UserFriendly::new(format!(
                             "environment variables {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} were set, \
@@ -450,10 +469,10 @@ impl Provider for Manager {
         }
     }
 
-    fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly> {
+    fn get_credentials_for_user(&self, user: &User) -> Result<Credentials, error::UserFriendly> {
         match user.credentials {
             Credentials::Basic(ref credentials) => {
-                credentials.password.clone().map_or_else(
+                let password = credentials.password.clone().map_or_else(
                     || {
                         self.keyring
                             .lock()
@@ -465,7 +484,38 @@ impl Provider for Manager {
                             })
                     },
                     Ok,
-                )
+                )?;
+                Ok(Credentials::Basic(BasicCredentials {
+                    username: credentials.username.clone(),
+                    password: Some(password),
+                }))
+            }
+            Credentials::OAuth2(ref credentials) => {
+                let private_key = credentials.private_key.clone().map_or_else(
+                    || {
+                        self.keyring
+                            .lock()
+                            .retrieve(&user.address, &format!("{}-privkey", &credentials.client_id))
+                            .map_err(|e| {
+                                error::UserFriendly::new(format!(
+                                    "Private key is not configured and could not be retrieved from the system store: {e}"
+                                ))
+                            })
+                    },
+                    Ok,
+                )?;
+                let token = credentials.token.clone().or_else(|| {
+                    self.keyring
+                        .lock()
+                        .retrieve(&user.address, &format!("{}-token", &credentials.client_id))
+                        .ok()
+                        .and_then(|s| serde_json::from_str::<OAuth2Token>(s.secret()).ok())
+                });
+                Ok(Credentials::OAuth2(OAuth2Credentials {
+                    client_id: credentials.client_id.clone(),
+                    private_key: Some(private_key),
+                    token,
+                }))
             }
         }
     }
@@ -497,12 +547,12 @@ impl Configurer for Manager {
     fn add_user(
         &mut self,
         mut user: User,
-        store_password_in_plaintext: bool,
+        store_secrets_in_plaintext: bool,
     ) -> Result<(), error::UserFriendly> {
         match user.credentials {
             Credentials::Basic(ref mut credentials) => {
                 assert!(credentials.password.is_some(), "No password specified!");
-                if !store_password_in_plaintext {
+                if !store_secrets_in_plaintext {
                     self.keyring
                         .lock()
                         .save(
@@ -515,6 +565,41 @@ impl Configurer for Manager {
                                 "could not save password to system credential store: {e}"
                             ))
                         })?;
+                }
+            }
+            Credentials::OAuth2(ref mut credentials) => {
+                assert!(
+                    credentials.private_key.is_some(),
+                    "No private key specified!"
+                );
+                if !store_secrets_in_plaintext {
+                    self.keyring
+                        .lock()
+                        .save(
+                            &user.address,
+                            &format!("{}-privkey", &credentials.client_id),
+                            &credentials.private_key.take().unwrap(),
+                        )
+                        .map_err(|e| {
+                            error::UserFriendly::new(format!(
+                                "could not save private key to system credential store: {e}"
+                            ))
+                        })?;
+
+                    if let Some(ref token) = credentials.token {
+                        self.keyring
+                            .lock()
+                            .save(
+                                &user.address,
+                                &format!("{}-token", &credentials.client_id),
+                                &SensitiveString::from(serde_json::to_string(token).unwrap()),
+                            )
+                            .map_err(|e| {
+                                error::UserFriendly::new(format!(
+                                    "could not save token to system credential store: {e}"
+                                ))
+                            })?;
+                    }
                 }
             }
         }
@@ -534,6 +619,31 @@ impl Configurer for Manager {
                         .map_err(|e| {
                             error::UserFriendly::new(format!(
                                 "could not delete password from system credential store: {e}"
+                            ))
+                        })?;
+                }
+            }
+            Credentials::OAuth2(credentials) => {
+                if credentials.private_key.is_none() {
+                    self.keyring
+                        .lock()
+                        .delete(
+                            &user.address,
+                            &format!("{}-privkey", &credentials.client_id),
+                        )
+                        .map_err(|e| {
+                            error::UserFriendly::new(format!(
+                                "could not delete private key from system credential store: {e}"
+                            ))
+                        })?;
+                }
+                if credentials.token.is_none() {
+                    self.keyring
+                        .lock()
+                        .delete(&user.address, &format!("{}-token", &credentials.client_id))
+                        .map_err(|e| {
+                            error::UserFriendly::new(format!(
+                                "could not delete token from system credential store: {e}"
                             ))
                         })?;
                 }

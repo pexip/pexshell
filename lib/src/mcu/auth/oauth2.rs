@@ -11,9 +11,9 @@ use crate::util::SensitiveString;
 
 use super::ApiClientAuth;
 
-struct AuthToken {
-    token: SensitiveString,
-    expires_at: chrono::DateTime<chrono::Utc>,
+pub struct AuthToken {
+    pub token: SensitiveString,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(serde::Deserialize)]
@@ -63,12 +63,17 @@ pub struct OAuth2 {
 
 impl OAuth2 {
     #[must_use]
-    pub fn new(endpoint: String, client_id: String, client_key: SensitiveString) -> Self {
+    pub fn new(
+        endpoint: String,
+        client_id: String,
+        client_key: SensitiveString,
+        current_token: Option<AuthToken>,
+    ) -> Self {
         Self {
             endpoint,
             client_id,
             client_key,
-            token: Mutex::new(None),
+            token: Mutex::new(current_token),
         }
     }
 
@@ -195,6 +200,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             server.url("/oauth/token/").to_string(),
             "test_client".to_string(),
             client_key,
+            None,
         );
 
         // Test initial token retrieval and application

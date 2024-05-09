@@ -14,7 +14,6 @@ pub mod future;
 pub mod logging;
 
 use std::{
-    future::Future,
     io::Write,
     path::{Path, PathBuf},
     sync::Arc,
@@ -119,7 +118,6 @@ pub struct TestContext {
     cache_dir: PathBuf,
     config_dir: PathBuf,
     clean_up: bool,
-    tokio_runtime: tokio::runtime::Runtime,
     stdout_buffer: Arc<Mutex<String>>,
     stderr_buffer: Arc<Mutex<String>>,
     logging_permit: Mutex<Option<TestLoggerPermit<'static>>>,
@@ -160,10 +158,6 @@ impl TestContext {
             cache_dir,
             config_dir,
             clean_up: true,
-            tokio_runtime: tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap(),
             stdout_buffer,
             stderr_buffer,
             logging_permit: Mutex::new(Some(LOGGER.get_permit())),
@@ -283,11 +277,6 @@ impl TestContext {
         let mut stdout = String::new();
         std::mem::swap(&mut stdout, &mut self.stdout_buffer.lock());
         stdout
-    }
-
-    /// Used to call into asynchronous code from within a test.
-    pub fn block_on<F: Future>(&self, f: F) -> F::Output {
-        self.tokio_runtime.block_on(f)
     }
 }
 

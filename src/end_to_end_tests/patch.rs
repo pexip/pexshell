@@ -18,13 +18,13 @@ use crate::{
     test_util::TestContextExtensions,
 };
 
-#[test]
-fn patch_conference_config() {
+#[tokio::test]
+async fn patch_conference_config() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -36,24 +36,24 @@ fn patch_conference_config() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &[
-                "pexshell",
-                "configuration",
-                "conference",
-                "patch",
-                "89",
-                "--name",
-                "patch_test_conf",
-            ]
-            .map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &[
+            "pexshell",
+            "configuration",
+            "conference",
+            "patch",
+            "89",
+            "--name",
+            "patch_test_conf",
+        ]
+        .map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let output = test_context.take_stdout();

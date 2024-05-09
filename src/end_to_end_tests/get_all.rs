@@ -18,13 +18,13 @@ use crate::{
     test_util::TestContextExtensions,
 };
 
-#[test]
-fn get_returns_zero_objects() {
+#[tokio::test]
+async fn get_returns_zero_objects() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -45,15 +45,15 @@ fn get_returns_zero_objects() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &["pexshell", "configuration", "conference", "get"].map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &["pexshell", "configuration", "conference", "get"].map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let raw = test_context.take_stdout();
@@ -61,13 +61,13 @@ fn get_returns_zero_objects() {
     assert_eq!(output, json!([]));
 }
 
-#[test]
-fn get_returns_page() {
+#[tokio::test]
+async fn get_returns_page() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -97,15 +97,15 @@ fn get_returns_page() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &["pexshell", "configuration", "conference", "get"].map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &["pexshell", "configuration", "conference", "get"].map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let raw = test_context.take_stdout();
@@ -125,13 +125,13 @@ fn get_returns_page() {
     );
 }
 
-#[test]
-fn get_multiple_pages() {
+#[tokio::test]
+async fn get_multiple_pages() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -186,23 +186,23 @@ fn get_multiple_pages() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &[
-                "pexshell",
-                "configuration",
-                "conference",
-                "get",
-                "--page_size",
-                "2",
-            ]
-            .map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &[
+            "pexshell",
+            "configuration",
+            "conference",
+            "get",
+            "--page_size",
+            "2",
+        ]
+        .map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let raw = test_context.take_stdout();
@@ -226,13 +226,13 @@ fn get_multiple_pages() {
     );
 }
 
-#[test]
-fn get_limited_to_first_page() {
+#[tokio::test]
+async fn get_limited_to_first_page() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -262,25 +262,25 @@ fn get_limited_to_first_page() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &[
-                "pexshell",
-                "configuration",
-                "conference",
-                "get",
-                "--page_size",
-                "2",
-                "--limit",
-                "2",
-            ]
-            .map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &[
+            "pexshell",
+            "configuration",
+            "conference",
+            "get",
+            "--page_size",
+            "2",
+            "--limit",
+            "2",
+        ]
+        .map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let raw = test_context.take_stdout();

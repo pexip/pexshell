@@ -1,5 +1,5 @@
 use chrono::{Offset, TimeZone};
-use lib::mcu::auth::BasicAuth;
+use lib::mcu::auth::{ApiClientAuth, BasicAuth, OAuth2, OAuth2AccessToken};
 use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::io::Write;
@@ -106,12 +106,27 @@ fn combine_username(
 pub fn auth_for_user(
     user: &config::User,
     config: &impl ConfigProvider,
-) -> Result<BasicAuth, lib::error::UserFriendly> {
-    match user.credentials {
-        config::Credentials::Basic(ref credentials) => Ok(BasicAuth::new(
-            credentials.username.clone(),
-            config.get_password_for_user(user)?,
-        )),
+) -> Result<Box<dyn ApiClientAuth + 'static>, lib::error::UserFriendly> {
+    match config.get_credentials_for_user(user)? {
+        config::Credentials::Basic(credentials) => Ok(Box::new(BasicAuth::new(
+            credentials.username,
+            credentials.password.unwrap(),
+        ))),
+        config::Credentials::OAuth2(credentials) => {
+            let mcu_address = ApiClient::base_url_from_input_address(&user.address);
+            let endpoint = mcu_address + "/oauth/token/";
+            Ok(Box::new(OAuth2::new(
+                endpoint,
+                credentials.client_id,
+                credentials
+                    .private_key
+                    .expect("private key is required for OAuth2"),
+                credentials.token.map(|t| OAuth2AccessToken {
+                    token: t.access_token,
+                    expires_at: t.expiry,
+                }),
+            )))
+        }
     }
 }
 
@@ -602,12 +617,10 @@ mod tests {
             .return_const(get_test_users());
 
         mock_config
-            .expect_get_password_for_user()
+            .expect_get_credentials_for_user()
             .once()
             .withf(|user| matches!(user.credentials, Credentials::Basic(_)))
-            .returning(|user| match user.credentials {
-                Credentials::Basic(ref credentials) => Ok(credentials.password.clone().unwrap()),
-            });
+            .returning(|user| Ok(user.credentials.clone()));
 
         {
             let uri = uri.clone();

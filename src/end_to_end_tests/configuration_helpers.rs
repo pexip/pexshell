@@ -1,10 +1,12 @@
-use httptest::Server;
 use serde_json::Value;
 use test_helpers::{fs::Configurer, TestContext};
 
-pub fn configure_config_test_user(test_context: &TestContext, server: &Server) -> Configurer {
-    let configurer = test_context.get_config_builder().add_user(
-        server.url_str("").trim_end_matches('/'),
+pub fn configure_config_test_user(
+    test_context: &TestContext,
+    address: impl Into<String>,
+) -> Configurer {
+    let configurer = test_context.get_config_builder().add_basic_user(
+        address,
         "test_user",
         "test_password",
         true,

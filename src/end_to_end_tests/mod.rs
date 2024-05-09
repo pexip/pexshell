@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use std::collections::HashMap;
 
 use httptest::{
@@ -19,8 +21,8 @@ mod get_all;
 mod patch;
 mod post;
 
-#[test]
-fn basic_get() {
+#[tokio::test]
+async fn basic_get() {
     let test_context = get_test_context();
     let server = Server::run();
 
@@ -85,18 +87,18 @@ fn basic_get() {
     )
     .unwrap();
 
-    test_context
-        .block_on(crate::run_with(
-            &["pexshell", "configuration", "conference", "get", "1"]
-                .into_iter()
-                .map(String::from)
-                .collect::<Vec<_>>(),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &["pexshell", "configuration", "conference", "get", "1"]
+            .into_iter()
+            .map(String::from)
+            .collect::<Vec<_>>(),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 }
 
 fn json_response() -> serde_json::Value {

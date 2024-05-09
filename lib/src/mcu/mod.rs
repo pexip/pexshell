@@ -119,14 +119,14 @@ pub trait IApiClient {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
 
-pub struct ApiClient<Auth: ApiClientAuth + 'static> {
+pub struct ApiClient {
     http_client: reqwest::Client,
     base_address: String,
-    auth: Arc<Auth>,
+    auth: Arc<Box<dyn ApiClientAuth + 'static>>,
     semaphore: Arc<Semaphore>,
 }
 
-impl<Auth: ApiClientAuth> Clone for ApiClient<Auth> {
+impl Clone for ApiClient {
     fn clone(&self) -> Self {
         Self {
             http_client: self.http_client.clone(),
@@ -137,28 +137,41 @@ impl<Auth: ApiClientAuth> Clone for ApiClient<Auth> {
     }
 }
 
-impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
+impl ApiClient {
+    #[must_use]
+    pub fn base_url_from_input_address(input_address: &str) -> String {
+        if input_address.starts_with("http://") {
+            warn!("Using insecure http protocol!");
+            String::from(input_address)
+        } else if input_address.starts_with("https://") {
+            String::from(input_address)
+        } else {
+            format!("https://{input_address}")
+        }
+    }
+
     #[cfg(test)]
     #[must_use]
-    pub fn new_for_testing(http_client: reqwest::Client, mcu_address: String, auth: Auth) -> Self {
+    pub fn new_for_testing(
+        http_client: reqwest::Client,
+        mcu_address: String,
+        auth: impl ApiClientAuth + 'static,
+    ) -> Self {
         Self {
             http_client,
             base_address: mcu_address,
-            auth: Arc::new(auth),
+            auth: Arc::new(Box::new(auth)),
             semaphore: Arc::new(Semaphore::new(5)),
         }
     }
 
     #[must_use]
-    pub fn new(http_client: reqwest::Client, mcu_address: &str, auth: Auth) -> Self {
-        let base_address = if mcu_address.starts_with("http://") {
-            warn!("Using insecure http protocol!");
-            String::from(mcu_address)
-        } else if mcu_address.starts_with("https://") {
-            String::from(mcu_address)
-        } else {
-            format!("https://{mcu_address}")
-        };
+    pub fn new(
+        http_client: reqwest::Client,
+        mcu_address: &str,
+        auth: Box<dyn ApiClientAuth + 'static>,
+    ) -> Self {
+        let base_address = Self::base_url_from_input_address(mcu_address);
 
         Self {
             http_client,
@@ -201,7 +214,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 info!("GET {}", &uri);
                 self.http_client
                     .get(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .build()
             }
@@ -225,7 +238,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 );
                 self.http_client
                     .get(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .query(&filter_args)
                     .build()
@@ -241,7 +254,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 info!("POST {}", &uri);
                 self.http_client
                     .post(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .json(&args)
                     .build()
@@ -258,7 +271,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 info!("PATCH {}", &uri);
                 self.http_client
                     .patch(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .json(&args)
                     .build()
@@ -274,7 +287,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 info!("DELETE {}", &uri);
                 self.http_client
                     .delete(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .build()
             }
@@ -283,7 +296,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 debug!("API_SCHEMA {}", &uri);
                 self.http_client
                     .get(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .build()
             }
@@ -293,7 +306,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                 debug!("SCHEMA {}", &uri);
                 self.http_client
                     .get(uri)
-                    .auth_with(&*self.auth)
+                    .auth_with(&**self.auth)
                     .await
                     .build()
             }
@@ -412,7 +425,7 @@ impl<Auth: ApiClientAuth + 'static> ApiClient<Auth> {
                     if let Some(uri) = api_response.meta.next {
                         request = client.http_client
                                 .get(format!("{}{}", client.base_address, uri))
-                                .auth_with(&*client.auth).await
+                                .auth_with(&**client.auth).await
                                 .build()?;
                     } else {
                         break;
@@ -453,7 +466,7 @@ struct JsonError {
 
 #[allow(clippy::no_effect_underscore_binding)]
 #[async_trait]
-impl<Auth: ApiClientAuth + 'static> IApiClient for ApiClient<Auth> {
+impl IApiClient for ApiClient {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
         let is_command = matches!(
             request,

@@ -17,8 +17,6 @@ use strum::IntoEnumIterator;
 
 use serde_json::Value;
 
-use super::auth::ApiClientAuth;
-
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RootEntry {
     list_endpoint: String,
@@ -263,20 +261,13 @@ pub async fn read_all_schemas(
     Ok(all_schemas)
 }
 
-pub async fn cache_schemas<Auth: ApiClientAuth>(
-    api_client: &ApiClient<Auth>,
-    cache_dir: &Path,
-) -> anyhow::Result<()> {
+pub async fn cache_schemas(api_client: &ApiClient, cache_dir: &Path) -> anyhow::Result<()> {
     join_all_results(Api::iter().map(|api| cache_api(api_client, cache_dir, api))).await?;
 
     Ok(())
 }
 
-async fn cache_api<Auth: ApiClientAuth>(
-    api_client: &ApiClient<Auth>,
-    cache_dir: &Path,
-    api: Api,
-) -> anyhow::Result<()> {
+async fn cache_api(api_client: &ApiClient, cache_dir: &Path, api: Api) -> anyhow::Result<()> {
     let root_request = ApiRequest::ApiSchema { api };
     let json = api_client
         .send(root_request)
@@ -296,8 +287,8 @@ async fn cache_api<Auth: ApiClientAuth>(
     Ok(())
 }
 
-async fn cache_schema<Auth: ApiClientAuth>(
-    api_client: &ApiClient<Auth>,
+async fn cache_schema(
+    api_client: &ApiClient,
     cache_dir: &Path,
     api: Api,
     endpoint: &str,
