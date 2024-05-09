@@ -1,8 +1,8 @@
-use crate::config::Provider as ConfigProvider;
+use crate::{cli::login, config::Provider as ConfigProvider};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use lib::{
     error,
-    mcu::{self, auth::BasicAuth, schema},
+    mcu::{self, schema},
 };
 use log::info;
 use std::{fmt::Display, path::Path};
@@ -46,11 +46,8 @@ impl Cache {
 
             eprintln!("Generating cache...");
             info!("Generating cache...");
-            let api_client = mcu::ApiClient::new(
-                client,
-                &user.address,
-                BasicAuth::new(user.username.clone(), config.get_password_for_user(user)?),
-            );
+            let api_client =
+                mcu::ApiClient::new(client, &user.address, login::auth_for_user(user, config)?);
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
             eprintln!("Cache created.");

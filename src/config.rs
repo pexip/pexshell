@@ -22,13 +22,41 @@ use std::{collections::HashMap, fs::File, path::Path, sync::Arc};
 use mockall::mock;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct User {
-    pub address: String,
+#[serde(untagged)]
+pub enum Credentials {
+    Basic(BasicCredentials),
+}
+
+impl Credentials {
+    /// Unique user id for username and credential type
+    pub fn unique_id(&self) -> String {
+        match self {
+            Self::Basic(BasicCredentials { username, .. }) => format!("basic:{username}"),
+        }
+    }
+
+    /// Similar to `unique_id`, but without the credential type prefix
+    pub fn visual_id(&self) -> String {
+        match self {
+            Self::Basic(BasicCredentials { username, .. }) => username.to_owned(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BasicCredentials {
     pub username: String,
     #[cfg(not(test))]
     password: Option<SensitiveString>,
     #[cfg(test)]
     pub password: Option<SensitiveString>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct User {
+    pub address: String,
+    #[serde(flatten)]
+    pub credentials: Credentials,
     #[serde(default, skip_serializing_if = "Not::not")]
     #[allow(clippy::struct_field_names)]
     pub current_user: bool,
@@ -40,11 +68,25 @@ impl User {
     pub fn new(address: String, username: String, password: SensitiveString) -> Self {
         Self {
             address,
-            username,
-            password: Some(password),
+            credentials: Credentials::Basic(BasicCredentials {
+                username,
+                password: Some(password),
+            }),
             current_user: false,
             last_used: None,
         }
+    }
+
+    pub fn unique_id(&self) -> String {
+        let credential = self.credentials.unique_id();
+        let address = &self.address;
+        format!("{credential}@{address}")
+    }
+
+    pub fn visual_id(&self) -> String {
+        let credential = self.credentials.visual_id();
+        let address = &self.address;
+        format!("{credential}@{address}")
     }
 }
 
@@ -70,7 +112,6 @@ mock! {
         ) -> Result<(), error::UserFriendly>;
         fn delete_user(&mut self, index: usize) -> Result<(), error::UserFriendly>;
         fn set_current_user(&mut self, user: &User);
-        fn try_get_current_user<'a>(&'a self) -> Option<&'a User>;
     }
 }
 
@@ -116,8 +157,6 @@ pub trait Configurer: Send + Sync {
 
     /// Sets a given user as the currently active user.
     fn set_current_user(&mut self, user: &User);
-
-    fn try_get_current_user(&self) -> Option<&User>;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -333,7 +372,9 @@ impl Manager {
 
             match (env_address, env_username) {
                 (Some(env_address), Some(env_username)) => {
-                    self.config.users.iter().position(|u| u.address == *env_address && u.username == *env_username)
+                    self.config.users.iter().position(|u| u.address == *env_address && match u.credentials {
+                        Credentials::Basic(ref c) => c.username == *env_username,
+                    })
                     .map_or_else(|| Err(error::UserFriendly::new(format!(
                             "environment variables {ENV_USER_ADDRESS} and {ENV_USER_USERNAME} were set, \
                             but {ENV_USER_PASSWORD} was not, and couldn't find a matching user in the config file\n\
@@ -370,8 +411,7 @@ impl Manager {
         let password = Some(SensitiveString::from(env.get(ENV_USER_PASSWORD)?.clone()));
         Some(User {
             address,
-            username,
-            password,
+            credentials: Credentials::Basic(BasicCredentials { username, password }),
             current_user: false,
             last_used: None,
         })
@@ -411,19 +451,23 @@ impl Provider for Manager {
     }
 
     fn get_password_for_user(&self, user: &User) -> Result<SensitiveString, error::UserFriendly> {
-        user.password.clone().map_or_else(
-            || {
-                self.keyring
-                    .lock()
-                    .retrieve(&user.address, &user.username)
-                    .map_err(|e| {
-                        error::UserFriendly::new(format!(
-                            "Password is not configured and could not be retrieved from the system store: {e}"
-                        ))
-                    })
-            },
-            Ok,
-        )
+        match user.credentials {
+            Credentials::Basic(ref credentials) => {
+                credentials.password.clone().map_or_else(
+                    || {
+                        self.keyring
+                            .lock()
+                            .retrieve(&user.address, &credentials.username)
+                            .map_err(|e| {
+                                error::UserFriendly::new(format!(
+                                    "Password is not configured and could not be retrieved from the system store: {e}"
+                                ))
+                            })
+                    },
+                    Ok,
+                )
+            }
+        }
     }
 
     fn set_last_used(&mut self) -> Result<(), error::UserFriendly> {
@@ -455,20 +499,24 @@ impl Configurer for Manager {
         mut user: User,
         store_password_in_plaintext: bool,
     ) -> Result<(), error::UserFriendly> {
-        assert!(user.password.is_some(), "No password specified!");
-        if !store_password_in_plaintext {
-            self.keyring
-                .lock()
-                .save(
-                    &user.address,
-                    &user.username,
-                    &user.password.take().unwrap(),
-                )
-                .map_err(|e| {
-                    error::UserFriendly::new(format!(
-                        "could not save password to system credential store: {e}"
-                    ))
-                })?;
+        match user.credentials {
+            Credentials::Basic(ref mut credentials) => {
+                assert!(credentials.password.is_some(), "No password specified!");
+                if !store_password_in_plaintext {
+                    self.keyring
+                        .lock()
+                        .save(
+                            &user.address,
+                            &credentials.username,
+                            &credentials.password.take().unwrap(),
+                        )
+                        .map_err(|e| {
+                            error::UserFriendly::new(format!(
+                                "could not save password to system credential store: {e}"
+                            ))
+                        })?;
+                }
+            }
         }
 
         self.config.users.push(user);
@@ -477,15 +525,19 @@ impl Configurer for Manager {
 
     fn delete_user(&mut self, index: usize) -> Result<(), error::UserFriendly> {
         let user = self.config.users.remove(index);
-        if user.password.is_none() {
-            self.keyring
-                .lock()
-                .delete(&user.address, &user.username)
-                .map_err(|e| {
-                    error::UserFriendly::new(format!(
-                        "could not delete password from system credential store: {e}"
-                    ))
-                })?;
+        match user.credentials {
+            Credentials::Basic(credentials) => {
+                if credentials.password.is_none() {
+                    self.keyring
+                        .lock()
+                        .delete(&user.address, &credentials.username)
+                        .map_err(|e| {
+                            error::UserFriendly::new(format!(
+                                "could not delete password from system credential store: {e}"
+                            ))
+                        })?;
+                }
+            }
         }
         Ok(())
     }
@@ -493,15 +545,12 @@ impl Configurer for Manager {
     fn set_current_user(&mut self, user: &User) {
         for u in &mut self.config.users {
             u.current_user = false;
-            if (&u.username, &u.address) == (&user.username, &user.address) {
+            if (&u.credentials.unique_id(), &u.address)
+                == (&user.credentials.unique_id(), &user.address)
+            {
                 u.current_user = true;
             }
         }
-    }
-
-    #[must_use]
-    fn try_get_current_user(&self) -> Option<&User> {
-        self.config.users.iter().find(|user| user.current_user)
     }
 }
 
@@ -677,19 +726,23 @@ mod tests {
         assert_eq!(config.users.len(), 2);
 
         assert_eq!(config.users[0].address, "test_address.test.com");
-        assert_eq!(config.users[0].username, "admin");
-        assert_eq!(
-            config.users[0].password.as_ref().unwrap().secret(),
-            "some_admin_password"
-        );
+        assert!(matches!(
+            config.users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
         assert!(!config.users[0].current_user);
 
         assert_eq!(config.users[1].address, "test_address.testing.com");
-        assert_eq!(config.users[1].username, "a_user");
-        assert_eq!(
-            config.users[1].password.as_ref().unwrap().secret(),
-            "another_password"
-        );
+        assert!(matches!(
+            config.users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "a_user" && password.secret() == "another_password"
+        ));
         assert!(config.users[1].current_user);
         assert_eq!(
             config.users[1].last_used,
@@ -719,15 +772,19 @@ mod tests {
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
                 },
@@ -826,8 +883,10 @@ last_used = 1192778584
             log: None,
             users: vec![User {
                 address: String::from("test_address.test.com"),
-                username: String::from("admin"),
-                password: None,
+                credentials: Credentials::Basic(BasicCredentials {
+                    username: String::from("admin"),
+                    password: None,
+                }),
                 current_user: false,
                 last_used: None,
             }],
@@ -875,15 +934,19 @@ last_used = 1192778584
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: None,
                 },
@@ -945,15 +1008,19 @@ current_user = true
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: None,
                 },
@@ -981,8 +1048,10 @@ current_user = true
         .unwrap();
         let new_user = User {
             address: String::from("new_address.testing.com"),
-            username: String::from("a_new_user"),
-            password: Some(SensitiveString::from("some_new_password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("a_new_user"),
+                password: Some(SensitiveString::from("some_new_password")),
+            }),
             current_user: false,
             last_used: None,
         };
@@ -994,22 +1063,31 @@ current_user = true
         let users = mgr.get_users();
         assert_eq!(users.len(), 3);
         assert_eq!(users[0].address, "test_address.test.com");
-        assert_eq!(users[0].username, "admin");
-        assert_eq!(
-            users[0].password.as_ref().unwrap().secret(),
-            "some_admin_password"
-        );
+        assert!(matches!(
+            users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
-        assert_eq!(users[1].username, "a_user");
-        assert!(users[1].password.is_none());
+        assert!(matches!(
+            users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: None
+            }) if username == "a_user"
+        ));
         assert!(users[1].current_user);
         assert_eq!(users[2].address, "new_address.testing.com");
-        assert_eq!(users[2].username, "a_new_user");
-        assert_eq!(
-            users[2].password.as_ref().unwrap().secret(),
-            "some_new_password"
-        );
+        assert!(matches!(
+            users[2].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "a_new_user" && password.secret() == "some_new_password"
+        ));
         assert!(!users[2].current_user);
     }
 
@@ -1026,15 +1104,19 @@ current_user = true
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: None,
                 },
@@ -1071,8 +1153,10 @@ current_user = true
         .unwrap();
         let new_user = User {
             address: String::from("new_address.testing.com"),
-            username: String::from("a_new_user"),
-            password: Some(SensitiveString::from("some_new_password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("a_new_user"),
+                password: Some(SensitiveString::from("some_new_password")),
+            }),
             current_user: false,
             last_used: None,
         };
@@ -1084,19 +1168,31 @@ current_user = true
         let users = mgr.get_users();
         assert_eq!(users.len(), 3);
         assert_eq!(users[0].address, "test_address.test.com");
-        assert_eq!(users[0].username, "admin");
-        assert_eq!(
-            users[0].password.as_ref().unwrap().secret(),
-            "some_admin_password"
-        );
+        assert!(matches!(
+            users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password),
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
-        assert_eq!(users[1].username, "a_user");
-        assert!(users[1].password.is_none());
+        assert!(matches!(
+            users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: None,
+            }) if username == "a_user"
+        ));
         assert!(users[1].current_user);
         assert_eq!(users[2].address, "new_address.testing.com");
-        assert_eq!(users[2].username, "a_new_user");
-        assert!(users[2].password.is_none());
+        assert!(matches!(
+            users[2].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: None,
+            }) if username == "a_new_user"
+        ));
         assert!(!users[2].current_user);
     }
 
@@ -1113,15 +1209,19 @@ current_user = true
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: None,
                 },
@@ -1158,8 +1258,10 @@ current_user = true
         .unwrap();
         let new_user = User {
             address: String::from("new_address.testing.com"),
-            username: String::from("a_new_user"),
-            password: Some(SensitiveString::from("some_new_password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("a_new_user"),
+                password: Some(SensitiveString::from("some_new_password")),
+            }),
             current_user: false,
             last_used: None,
         };
@@ -1173,15 +1275,22 @@ current_user = true
         let users = mgr.get_users();
         assert_eq!(users.len(), 2);
         assert_eq!(users[0].address, "test_address.test.com");
-        assert_eq!(users[0].username, "admin");
-        assert_eq!(
-            users[0].password.as_ref().unwrap().secret(),
-            "some_admin_password"
-        );
+        assert!(matches!(
+            users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password),
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
-        assert_eq!(users[1].username, "a_user");
-        assert!(users[1].password.is_none());
+        assert!(matches!(
+            users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: None,
+            }) if username == "a_user"
+        ));
         assert!(users[1].current_user);
     }
 
@@ -1232,15 +1341,19 @@ current_user = true
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: false,
                     last_used: None,
                 },
@@ -1319,11 +1432,13 @@ current_user = true
         // Assert
         let user = result.unwrap();
         assert_eq!(user.address, "some.address");
-        assert_eq!(user.username, "some_username");
-        assert_eq!(
-            user.password.as_ref().map(SensitiveString::secret),
-            Some("super_secret_password")
-        );
+        assert!(matches!(
+            user.credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "some_username" && password.secret() == "super_secret_password"
+        ));
     }
 
     #[test_case(&[
@@ -1398,15 +1513,19 @@ current_user = true
             users: vec![
                 User {
                     address: String::from("test_address.test.com"),
-                    username: String::from("admin"),
-                    password: Some(SensitiveString::from("some_admin_password")),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
                     current_user: false,
                     last_used: None,
                 },
                 User {
                     address: String::from("test_address.testing.com"),
-                    username: String::from("a_user"),
-                    password: None,
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
                     current_user: true,
                     last_used: None,
                 },
@@ -1444,10 +1563,12 @@ current_user = true
         // Assert
         let user = result.unwrap();
         assert_eq!(user.address, "test_address.test.com");
-        assert_eq!(user.username, "admin");
-        assert_eq!(
-            user.password.as_ref().map(SensitiveString::secret),
-            Some("some_admin_password")
-        );
+        assert!(matches!(
+            user.credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
     }
 }

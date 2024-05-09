@@ -100,12 +100,19 @@ fn combine_username(
     user: &config::User,
     tz: &impl TimeZone<Offset = impl Offset + Display>,
 ) -> String {
-    format!(
-        "{}@{} {}",
-        user.username,
-        user.address,
-        format_last_used(user, tz)
-    )
+    format!("{} {}", user.visual_id(), format_last_used(user, tz))
+}
+
+pub fn auth_for_user(
+    user: &config::User,
+    config: &impl ConfigProvider,
+) -> Result<BasicAuth, lib::error::UserFriendly> {
+    match user.credentials {
+        config::Credentials::Basic(ref credentials) => Ok(BasicAuth::new(
+            credentials.username.clone(),
+            config.get_password_for_user(user)?,
+        )),
+    }
 }
 
 async fn test_request(
@@ -113,11 +120,8 @@ async fn test_request(
     config: &impl ConfigProvider,
     user: &config::User,
 ) -> Result<(), lib::error::UserFriendly> {
-    let api_client = ApiClient::new(
-        client,
-        &user.address,
-        BasicAuth::new(user.username.clone(), config.get_password_for_user(user)?),
-    );
+    let auth = auth_for_user(user, config)?;
+    let api_client = ApiClient::new(client, &user.address, auth);
 
     let ApiResponse::ContentStream(mut stream) = api_client
         .send(ApiRequest::GetAll {
@@ -281,7 +285,7 @@ mod tests {
 
     use crate::{
         cli::Console,
-        config::{self, User},
+        config::{self, BasicCredentials, Credentials, User},
     };
 
     use super::{combine_username, Login, MockInteract};
@@ -289,22 +293,28 @@ mod tests {
     fn get_test_users() -> Vec<User> {
         let user_1 = User {
             address: String::from("testing.test.1"),
-            username: String::from("username.1"),
-            password: Some(SensitiveString::from("password.1")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username.1"),
+                password: Some(SensitiveString::from("password.1")),
+            }),
             current_user: false,
             last_used: None,
         };
         let user_2 = User {
             address: String::from("testing.test.2"),
-            username: String::from("username.2"),
-            password: Some(SensitiveString::from("password.2")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username.2"),
+                password: Some(SensitiveString::from("password.2")),
+            }),
             current_user: true,
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
         let user_3 = User {
             address: String::from("testing.test.3"),
-            username: String::from("username.3"),
-            password: Some(SensitiveString::from("password.3")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username.3"),
+                password: Some(SensitiveString::from("password.3")),
+            }),
             current_user: false,
             last_used: None,
         };
@@ -315,8 +325,10 @@ mod tests {
     fn test_combine_username() {
         let user = User {
             address: String::from("testing.test"),
-            username: String::from("username"),
-            password: Some(SensitiveString::from("password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username"),
+                password: Some(SensitiveString::from("password")),
+            }),
             current_user: false,
             last_used: None,
         };
@@ -330,8 +342,10 @@ mod tests {
     fn test_combine_username_with_date() {
         let user = User {
             address: String::from("testing.test"),
-            username: String::from("username"),
-            password: Some(SensitiveString::from("password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username"),
+                password: Some(SensitiveString::from("password")),
+            }),
             current_user: false,
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
@@ -345,8 +359,10 @@ mod tests {
     fn test_combine_username_with_timezone() {
         let user = User {
             address: String::from("testing.test"),
-            username: String::from("username"),
-            password: Some(SensitiveString::from("password")),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("username"),
+                password: Some(SensitiveString::from("password")),
+            }),
             current_user: false,
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
@@ -413,11 +429,13 @@ mod tests {
 
         // Assert
         assert_eq!(user.address, "testing.test");
-        assert_eq!(user.username, "some_username");
-        assert_eq!(
-            user.password.map(|s| s.secret().to_owned()),
-            Some(String::from("some_password"))
-        );
+        assert!(matches!(
+            user.credentials,
+            Credentials::Basic(BasicCredentials {
+                ref username,
+                password: Some(ref password)
+            }) if username == "some_username" && password.secret() == "some_password"
+        ));
     }
 
     #[test]
@@ -433,11 +451,13 @@ mod tests {
             .expect_set_current_user()
             .withf(move |user: &User| {
                 user.address == "testing.test.3"
-                    && user.username == "username.3"
-                    && user
-                        .password
-                        .as_ref()
-                        .map_or(false, |s| s.secret() == "password.3")
+                    && matches!(
+                        user.credentials,
+                        Credentials::Basic(BasicCredentials {
+                            ref username,
+                            password: Some(ref password)
+                        }) if username == "username.3" && password.secret() == "password.3"
+                    )
                     && user.last_used.is_none()
             })
             .once()
@@ -488,11 +508,14 @@ mod tests {
             .expect_add_user()
             .withf(|user: &User, plaintext| {
                 user.address == "testing.new"
-                    && user.username == "some_new_username"
-                    && user
-                        .password
-                        .as_ref()
-                        .map_or(false, |s| s.secret() == "some_new_password")
+
+                    && matches!(
+                        user.credentials,
+                        Credentials::Basic(BasicCredentials {
+                            ref username,
+                            password: Some(ref password)
+                        }) if username == "some_new_username" && password.secret() == "some_new_password"
+                    )
                     && *plaintext
             })
             .once()
@@ -502,11 +525,13 @@ mod tests {
             .expect_set_current_user()
             .withf(move |user: &User| {
                 user.address == "testing.new"
-                    && user.username == "some_new_username"
-                    && user
-                        .password
-                        .as_ref()
-                        .map_or(false, |s| s.secret() == "some_new_password")
+                    && matches!(
+                        user.credentials,
+                        Credentials::Basic(BasicCredentials {
+                            ref username,
+                            password: Some(ref password)
+                        }) if username == "some_new_username" && password.secret() == "some_new_password"
+                    )
                     && user.last_used.is_none()
             })
             .once()
@@ -579,7 +604,10 @@ mod tests {
         mock_config
             .expect_get_password_for_user()
             .once()
-            .returning(|user| Ok(user.password.clone().unwrap()));
+            .withf(|user| matches!(user.credentials, Credentials::Basic(_)))
+            .returning(|user| match user.credentials {
+                Credentials::Basic(ref credentials) => Ok(credentials.password.clone().unwrap()),
+            });
 
         {
             let uri = uri.clone();
@@ -587,11 +615,13 @@ mod tests {
                 .expect_add_user()
                 .withf(move |user: &User, plaintext| {
                     user.address == uri
-                        && user.username == "some_new_username"
-                        && user
-                            .password
-                            .as_ref()
-                            .map_or(false, |s| s.secret() == "some_new_password")
+                        && matches!(
+                            user.credentials,
+                            Credentials::Basic(BasicCredentials {
+                                ref username,
+                                password: Some(ref password)
+                            }) if username == "some_new_username" && password.secret() == "some_new_password"
+                        )
                         && !*plaintext
                 })
                 .once()
@@ -605,11 +635,13 @@ mod tests {
                 .expect_set_current_user()
                 .withf(move |user: &User| {
                     user.address == uri
-                        && user.username == "some_new_username"
-                        && user
-                            .password
-                            .as_ref()
-                            .map_or(false, |s| s.secret() == "some_new_password")
+                    && matches!(
+                        user.credentials,
+                        Credentials::Basic(BasicCredentials {
+                            ref username,
+                            password: Some(ref password)
+                        }) if username == "some_new_username" && password.secret() == "some_new_password"
+                    )
                         && user.last_used.is_some()
                 })
                 .once()

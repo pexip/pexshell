@@ -2,7 +2,7 @@
 
 use crate::{
     argparse,
-    cli::Console,
+    cli::{login, Console},
     config::{Config, Manager as ConfigManager, Provider as ConfigProvider},
     Directories, LOGGER,
 };
@@ -12,7 +12,6 @@ use lib::{
     error,
     mcu::{
         self,
-        auth::BasicAuth,
         schema::{self, cache_exists},
         ApiResponse, IApiClient,
     },
@@ -102,11 +101,8 @@ impl<'a> PexShell<'a> {
     ) -> anyhow::Result<()> {
         let user = config.get_current_user()?;
 
-        let api_client = mcu::ApiClient::new(
-            client,
-            &user.address,
-            BasicAuth::new(user.username.clone(), config.get_password_for_user(user)?),
-        );
+        let api_client =
+            mcu::ApiClient::new(client, &user.address, login::auth_for_user(user, config)?);
         let (api_request, stream_output) = crate::api_request_from_matches(matches, &schemas.0)?;
 
         match api_client.send(api_request).await? {
