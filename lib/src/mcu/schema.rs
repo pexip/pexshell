@@ -398,7 +398,10 @@ mod tests {
         );
 
         // Act
-        test_context
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
             .block_on(cache_api(&api_client, &PathBuf::from(&cache_path), api))
             .unwrap();
 
@@ -477,7 +480,10 @@ mod tests {
         );
 
         // Act
-        test_context
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
             .block_on(cache_schema(
                 &api_client,
                 &PathBuf::from(&cache_path),
