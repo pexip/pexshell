@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::Header;
+use log::debug;
 use rand::Rng;
 use serde::ser::SerializeStruct;
 use tokio::sync::Mutex;
@@ -98,6 +99,7 @@ impl<'callback> OAuth2<'callback> {
         let issued_at = Utc::now();
         let expires_at = issued_at + chrono::Duration::hours(1);
         let token_id = Self::generate_token_id();
+        debug!("Generated token ID: {}", token_id);
 
         let claims = jsonwebtoken::encode(
             &Header::new(jsonwebtoken::Algorithm::ES256),
@@ -142,21 +144,46 @@ impl<'callback> OAuth2<'callback> {
 #[async_trait]
 impl<'callback> ApiClientAuth for OAuth2<'callback> {
     async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        debug!("Configuring request with OAuth2 authentication");
+
         let mut token = self.token.lock().await;
         if let Some(token) = &*token {
             if token.expires_at > Utc::now() + chrono::Duration::minutes(5) {
+                debug!(
+                    "Using existing OAuth2 token (expires at: {})",
+                    token.expires_at
+                );
                 return request.bearer_auth(token.token.secret());
                 // return request.basic_auth(&self.client_id, Some(&token.token));
             }
+
+            if token.expires_at < Utc::now() {
+                debug!(
+                    "Existing OAuth2 token is expired (expires at: {})",
+                    token.expires_at
+                );
+            } else {
+                debug!(
+                    "Existing OAuth2 token expires soon (expires at: {})",
+                    token.expires_at
+                );
+            }
         }
+
+        debug!("Fetching new OAuth2 token");
 
         let client_key =
             jsonwebtoken::EncodingKey::from_ec_pem(self.client_key.secret().as_bytes())
-                .expect("Invalid EC PEM key");
+                .expect("invalid EC PEM key");
 
         let new_token = Self::get_token(&self.endpoint, &self.client_id, &client_key)
             .await
-            .expect("Failed to get OAuth2 token");
+            .expect("failed to get OAuth2 token");
+
+        debug!(
+            "Fetched new OAuth2 token (expires at: {})",
+            new_token.expires_at
+        );
 
         *token = Some(new_token);
 

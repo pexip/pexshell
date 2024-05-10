@@ -99,6 +99,19 @@ impl User {
         }
     }
 
+    pub fn new_oauth2(address: String, client_id: String, private_key: SensitiveString) -> Self {
+        Self {
+            address,
+            credentials: Credentials::OAuth2(OAuth2Credentials {
+                client_id,
+                private_key: Some(private_key),
+                token: None,
+            }),
+            current_user: false,
+            last_used: None,
+        }
+    }
+
     #[allow(dead_code)]
     pub fn unique_id(&self) -> String {
         let credential = self.credentials.unique_id();

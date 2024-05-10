@@ -3,7 +3,7 @@ use lib::mcu::auth::{ApiClientAuth, BasicAuth, OAuth2, OAuth2AccessToken};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
-use std::io::Write;
+use std::io::{Read, Write};
 
 use crate::{
     config::{self, Provider as ConfigProvider},
@@ -40,6 +40,7 @@ pub trait Interact: Send {
     fn password(&mut self, prompt: &str) -> SensitiveString;
     fn select<T: ToString + 'static>(&mut self, prompt: &str, default: usize, items: &[T])
         -> usize;
+    fn read_to_end(&mut self) -> String;
 }
 
 pub struct Interactive {}
@@ -79,6 +80,12 @@ impl Interact for Interactive {
                 .interact()
                 .unwrap(),
         )
+    }
+
+    fn read_to_end(&mut self) -> String {
+        let mut input = String::new();
+        std::io::stdin().read_to_string(&mut input).unwrap();
+        input
     }
 }
 
@@ -207,7 +214,7 @@ impl<Backend: Interact> Login<Backend> {
                 "no stored api credentials found; add a new user to continue:"
             )
             .unwrap();
-            let mut user = self.input_user();
+            let mut user = self.input_basic_user();
 
             if verify_credentials {
                 test_request(client, config, &user).await?;
@@ -223,7 +230,7 @@ impl<Backend: Interact> Login<Backend> {
             let selection = self.interact.select("select a user", 0, &user_list);
 
             if user_list[selection] == ADD_A_USER_OPTION {
-                let mut user = self.input_user();
+                let mut user = self.input_basic_user();
 
                 if verify_credentials {
                     test_request(client, config, &user).await?;
@@ -241,7 +248,28 @@ impl<Backend: Interact> Login<Backend> {
         Ok(())
     }
 
-    pub fn input_user(&mut self) -> config::User {
+    pub async fn add_and_select_oauth2_user(
+        &mut self,
+        config: &mut (impl config::Configurer + config::Provider),
+        client: reqwest::Client,
+        address: String,
+        client_id: String,
+        verify_credentials: bool,
+        store_private_key_in_plaintext: bool,
+    ) -> Result<(), lib::error::UserFriendly> {
+        let mut user = self.input_oauth2_user(address, client_id);
+
+        if verify_credentials {
+            test_request(client, config, &user).await?;
+            user.last_used = Some(chrono::offset::Utc::now());
+        }
+
+        config.add_user(user.clone(), store_private_key_in_plaintext)?;
+        config.set_current_user(&user);
+        Ok(())
+    }
+
+    pub fn input_basic_user(&mut self) -> config::User {
         let input_address: String = self.interact.text("address");
 
         let input_username: String = self.interact.text("username");
@@ -249,6 +277,11 @@ impl<Backend: Interact> Login<Backend> {
         let input_password = self.interact.password("password");
 
         config::User::new(input_address, input_username, input_password)
+    }
+
+    pub fn input_oauth2_user(&mut self, address: String, client_id: String) -> config::User {
+        let client_cert = SensitiveString::from(self.interact.read_to_end());
+        config::User::new_oauth2(address, client_id, client_cert)
     }
 
     #[allow(clippy::unused_self)]
@@ -447,7 +480,7 @@ mod tests {
             .return_const(SensitiveString::from("some_password"));
 
         // Act
-        let user = login.input_user();
+        let user = login.input_basic_user();
 
         // Assert
         assert_eq!(user.address, "testing.test");

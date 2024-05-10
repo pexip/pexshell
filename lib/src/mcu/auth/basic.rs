@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use log::debug;
 
 use crate::util::SensitiveString;
 
@@ -19,6 +20,7 @@ impl BasicAuth {
 #[async_trait]
 impl ApiClientAuth for BasicAuth {
     async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        debug!("Configuring request with basic authentication");
         request.basic_auth(&self.username, Some(&self.password.secret()))
     }
 }
