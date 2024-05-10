@@ -16,15 +16,15 @@ jsonwebtoken.workspace = true
 log.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-jwt-simple = { version = "0.12.9", default-features = false, features = [
-    "pure-rust",
-] }
+p256 = "0.13.2"
+rand = "0.8.5"
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
 tokio.workspace = true
 toml.workspace = true
 uuid.workspace = true
+zeroize = "1.7"
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["blocking", "rustls"] }

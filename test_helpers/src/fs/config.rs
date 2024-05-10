@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
-use jwt_simple::algorithms::ES256KeyPair;
+use p256::pkcs8::*;
+use p256::{ecdsa, pkcs8::LineEnding};
+use rand::rngs::OsRng;
 use serde::Serialize;
 use toml::{self, Value};
 
@@ -76,7 +78,7 @@ impl Configurer {
         self.config.users.push(User {
             address: address.into(),
             client_id: Some(credentials.client_id.clone()),
-            private_key: Some(credentials.get_client_cert_pem()),
+            private_key: Some(credentials.get_client_key_pem()),
             token: credentials.access_token.as_ref().map(|t| OAuth2Token {
                 access_token: t.client_secret.clone(),
                 expiry: t.expiry,
@@ -129,28 +131,35 @@ struct OAuth2AccessToken {
 
 pub struct OAuth2Credentials {
     client_id: String,
-    key_pair: ES256KeyPair,
+    client_key: ecdsa::SigningKey,
+    server_key: ecdsa::VerifyingKey,
     access_token: Option<OAuth2AccessToken>,
 }
 
 impl OAuth2Credentials {
     #[must_use]
-    pub fn get_client_cert_pem(&self) -> String {
-        self.key_pair.to_pem().unwrap()
+    pub fn get_client_key_pem(&self) -> String {
+        self.client_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .unwrap()
+            .as_str()
+            .to_owned()
     }
 
     #[must_use]
-    pub fn get_server_cert_pem(&self) -> String {
-        self.key_pair.public_key().to_pem().unwrap()
+    pub fn get_server_key_pem(&self) -> String {
+        self.server_key.to_public_key_pem(LineEnding::LF).unwrap()
     }
 }
 
 impl OAuth2Credentials {
     pub fn new(client_id: impl Into<String>) -> Self {
-        let key_pair = ES256KeyPair::generate();
+        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let server_key = ecdsa::VerifyingKey::from(&client_key);
         Self {
             client_id: client_id.into(),
-            key_pair,
+            client_key,
+            server_key,
             access_token: None,
         }
     }
@@ -160,10 +169,12 @@ impl OAuth2Credentials {
         client_secret: impl Into<String>,
         expiry: DateTime<Utc>,
     ) -> Self {
-        let key_pair = ES256KeyPair::generate();
+        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let server_key = ecdsa::VerifyingKey::from(&client_key);
         Self {
             client_id: client_id.into(),
-            key_pair,
+            client_key,
+            server_key,
             access_token: Some(OAuth2AccessToken {
                 client_secret: client_secret.into(),
                 expiry,
