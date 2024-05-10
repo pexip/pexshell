@@ -154,7 +154,6 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
                     token.expires_at
                 );
                 return request.bearer_auth(token.token.secret());
-                // return request.basic_auth(&self.client_id, Some(&token.token));
             }
 
             if token.expires_at < Utc::now() {
