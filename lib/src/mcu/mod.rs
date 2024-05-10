@@ -116,17 +116,17 @@ impl Default for CommandApi {
 
 #[async_trait]
 pub trait IApiClient {
-    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
+    async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>>;
 }
 
-pub struct ApiClient {
+pub struct ApiClient<'auth> {
     http_client: reqwest::Client,
     base_address: String,
-    auth: Arc<Box<dyn ApiClientAuth + 'static>>,
+    auth: Arc<Box<dyn ApiClientAuth + 'auth>>,
     semaphore: Arc<Semaphore>,
 }
 
-impl Clone for ApiClient {
+impl<'auth> Clone for ApiClient<'auth> {
     fn clone(&self) -> Self {
         Self {
             http_client: self.http_client.clone(),
@@ -137,7 +137,7 @@ impl Clone for ApiClient {
     }
 }
 
-impl ApiClient {
+impl<'auth> ApiClient<'auth> {
     #[must_use]
     pub fn base_url_from_input_address(input_address: &str) -> String {
         if input_address.starts_with("http://") {
@@ -169,7 +169,7 @@ impl ApiClient {
     pub fn new(
         http_client: reqwest::Client,
         mcu_address: &str,
-        auth: Box<dyn ApiClientAuth + 'static>,
+        auth: Box<dyn ApiClientAuth + 'auth>,
     ) -> Self {
         let base_address = Self::base_url_from_input_address(mcu_address);
 
@@ -379,7 +379,7 @@ impl ApiClient {
     fn streamed_response(
         self,
         api_request: ApiRequest,
-    ) -> impl Stream<Item = Result<Value, ApiClientError>> + Send {
+    ) -> impl Stream<Item = Result<Value, ApiClientError>> + Send + 'auth {
         try_stream! {
             let client = self;
             if let ApiRequest::GetAll {
@@ -466,8 +466,8 @@ struct JsonError {
 
 #[allow(clippy::no_effect_underscore_binding)]
 #[async_trait]
-impl IApiClient for ApiClient {
-    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
+impl<'auth> IApiClient for ApiClient<'auth> {
+    async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>> {
         let is_command = matches!(
             request,
             ApiRequest::Post {
@@ -604,14 +604,14 @@ impl ApiRequest {
     }
 }
 
-pub enum ApiResponse {
+pub enum ApiResponse<'a> {
     Nothing,
     Location(String),
     Content(Value),
-    ContentStream(util::StreamWrapper<Result<Value, ApiClientError>>),
+    ContentStream(util::StreamWrapper<'a, Result<Value, ApiClientError>>),
 }
 
-impl ApiResponse {
+impl<'a> ApiResponse<'a> {
     #[must_use]
     pub fn unwrap_content_or_default(self) -> Value {
         if let Self::Content(content) = self {

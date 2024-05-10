@@ -1,3 +1,5 @@
+#![allow(clippy::significant_drop_tightening)]
+
 use std::collections::HashMap;
 
 use async_trait::async_trait;
@@ -11,6 +13,7 @@ use crate::util::SensitiveString;
 
 use super::ApiClientAuth;
 
+#[derive(Clone, Debug)]
 pub struct AuthToken {
     pub token: SensitiveString,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -53,27 +56,31 @@ impl<'a> serde::Serialize for Claims<'a> {
     }
 }
 
-pub struct OAuth2 {
+pub struct OAuth2<'callback> {
     endpoint: String,
     client_id: String,
     /// Private key (ES256)
     client_key: SensitiveString,
     token: Mutex<Option<AuthToken>>,
+    #[allow(clippy::type_complexity)]
+    token_callback: Box<dyn Fn(&AuthToken) + Send + Sync + 'callback>,
 }
 
-impl OAuth2 {
+impl<'callback> OAuth2<'callback> {
     #[must_use]
     pub fn new(
         endpoint: String,
         client_id: String,
         client_key: SensitiveString,
         current_token: Option<AuthToken>,
+        token_callback: impl Fn(&AuthToken) + Send + Sync + 'callback,
     ) -> Self {
         Self {
             endpoint,
             client_id,
             client_key,
             token: Mutex::new(current_token),
+            token_callback: Box::new(token_callback),
         }
     }
 
@@ -133,7 +140,7 @@ impl OAuth2 {
 }
 
 #[async_trait]
-impl ApiClientAuth for OAuth2 {
+impl<'callback> ApiClientAuth for OAuth2<'callback> {
     async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         let mut token = self.token.lock().await;
         if let Some(token) = &*token {
@@ -153,13 +160,15 @@ impl ApiClientAuth for OAuth2 {
 
         *token = Some(new_token);
 
+        (self.token_callback)(token.as_ref().unwrap());
+
         request.bearer_auth(token.as_ref().unwrap().token.secret())
-        // request.basic_auth(&self.client_id, Some(&token.as_ref().unwrap().token))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use chrono::Duration;
     use httptest::all_of;
     use httptest::matchers::{
         contains,
@@ -196,11 +205,18 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
 "
         );
 
+        let token_callback_count = std::sync::atomic::AtomicUsize::new(0);
+        let token_from_callback: std::sync::Mutex<Option<AuthToken>> = std::sync::Mutex::new(None);
+
         let auth = OAuth2::new(
             server.url("/oauth/token/").to_string(),
             "test_client".to_string(),
             client_key,
             None,
+            |token| {
+                token_from_callback.lock().unwrap().replace(token.clone());
+                token_callback_count.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+            },
         );
 
         // Test initial token retrieval and application
@@ -244,6 +260,19 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         assert_eq!(response_content, json!({"test": "response"}));
 
         server.verify_and_clear();
+        assert_eq!(
+            token_callback_count.load(std::sync::atomic::Ordering::Acquire),
+            1
+        );
+
+        {
+            let token = token_from_callback.lock().unwrap();
+            let token: &AuthToken = token.as_ref().unwrap();
+
+            assert_eq!(token.token.secret(), "test_token");
+
+            assert!((Utc::now() + Duration::hours(1)) - token.expires_at < Duration::seconds(60));
+        }
 
         // Test token reuse
         server.expect(

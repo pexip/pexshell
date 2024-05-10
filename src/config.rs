@@ -9,6 +9,7 @@ use crate::error;
 use crate::Directories;
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use fslock::LockFile;
+use lib::mcu::auth::OAuth2AccessToken;
 use lib::util::SensitiveString;
 use log::debug;
 use parking_lot::Mutex;
@@ -119,6 +120,7 @@ mock! {
         fn get_current_user<'a>(&'a self) -> Result<&'a User, error::UserFriendly>;
         fn get_credentials_for_user(&self, user: &User) -> Result<Credentials, error::UserFriendly>;
         fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
+        fn set_oauth2_token(&mut self, user: &User, token: &OAuth2AccessToken) -> Result<(), error::UserFriendly>;
     }
 
     impl Configurer for ConfigManager {
@@ -156,6 +158,12 @@ pub trait Provider: Send + Sync {
 
     // Sets last used
     fn set_last_used(&mut self) -> Result<(), error::UserFriendly>;
+
+    fn set_oauth2_token(
+        &mut self,
+        user: &User,
+        token: &OAuth2AccessToken,
+    ) -> Result<(), error::UserFriendly>;
 }
 
 /// Abstraction for accessing and modifying config.
@@ -534,6 +542,57 @@ impl Provider for Manager {
             UserConfigContext::Env => debug!("Not updating last used for environmental user"),
         }
         Ok(())
+    }
+
+    fn set_oauth2_token(
+        &mut self,
+        user: &User,
+        token: &OAuth2AccessToken,
+    ) -> Result<(), error::UserFriendly> {
+        if let Some(user) = self
+            .config
+            .users
+            .iter_mut()
+            .find(|u| u.unique_id() == user.unique_id())
+        {
+            let token = OAuth2Token {
+                access_token: token.token.clone(),
+                expiry: token.expires_at,
+            };
+
+            match user.credentials {
+                Credentials::Basic(_) => Err(error::UserFriendly::new(
+                    "cannot update oauth2 token: expected oauth2 user, but found basic auth user",
+                )),
+                Credentials::OAuth2(ref mut credentials) => {
+                    if credentials.private_key.is_some() {
+                        // store token in plaintext
+                        credentials.token = Some(token);
+                        self.write_to_file()?;
+                    } else {
+                        // store token in keyring
+                        self.keyring
+                            .lock()
+                            .save(
+                                &user.address,
+                                &format!("{}-token", &credentials.client_id),
+                                &SensitiveString::from(serde_json::to_string(&token).unwrap()),
+                            )
+                            .map_err(|e| {
+                                error::UserFriendly::new(format!(
+                                    "could not save token to system credential store: {e}"
+                                ))
+                            })?;
+                    }
+
+                    Ok(())
+                }
+            }
+        } else {
+            Err(error::UserFriendly::new(
+                "cannot update oauth2 token: user not found",
+            ))
+        }
     }
 }
 

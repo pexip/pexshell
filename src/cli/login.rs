@@ -1,5 +1,6 @@
 use chrono::{Offset, TimeZone};
 use lib::mcu::auth::{ApiClientAuth, BasicAuth, OAuth2, OAuth2AccessToken};
+use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::io::Write;
@@ -103,16 +104,17 @@ fn combine_username(
     format!("{} {}", user.visual_id(), format_last_used(user, tz))
 }
 
-pub fn auth_for_user(
-    user: &config::User,
-    config: &impl ConfigProvider,
-) -> Result<Box<dyn ApiClientAuth + 'static>, lib::error::UserFriendly> {
+pub fn auth_for_user<'config>(
+    user: &'config config::User,
+    config: &'config mut impl ConfigProvider,
+) -> Result<Box<dyn ApiClientAuth + 'config>, lib::error::UserFriendly> {
     match config.get_credentials_for_user(user)? {
         config::Credentials::Basic(credentials) => Ok(Box::new(BasicAuth::new(
             credentials.username,
             credentials.password.unwrap(),
         ))),
         config::Credentials::OAuth2(credentials) => {
+            let config = Mutex::new(config);
             let mcu_address = ApiClient::base_url_from_input_address(&user.address);
             let endpoint = mcu_address + "/oauth/token/";
             Ok(Box::new(OAuth2::new(
@@ -125,6 +127,11 @@ pub fn auth_for_user(
                     token: t.access_token,
                     expires_at: t.expiry,
                 }),
+                move |token| {
+                    if let Err(e) = config.lock().set_oauth2_token(user, token) {
+                        error!("failed to save OAuth2 token: {}", e);
+                    }
+                },
             )))
         }
     }
@@ -132,7 +139,7 @@ pub fn auth_for_user(
 
 async fn test_request(
     client: reqwest::Client,
-    config: &impl ConfigProvider,
+    config: &mut impl ConfigProvider,
     user: &config::User,
 ) -> Result<(), lib::error::UserFriendly> {
     let auth = auth_for_user(user, config)?;
