@@ -7,7 +7,10 @@ use crate::consts::{
 };
 use crate::error;
 use crate::Directories;
-use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use chrono::{
+    serde::{ts_seconds, ts_seconds_option},
+    DateTime, Utc,
+};
 use fslock::LockFile;
 use lib::mcu::auth::OAuth2AccessToken;
 use lib::util::SensitiveString;
@@ -56,6 +59,7 @@ pub struct BasicCredentials {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OAuth2Token {
     pub access_token: SensitiveString,
+    #[serde(with = "ts_seconds")]
     pub expiry: DateTime<Utc>,
 }
 
