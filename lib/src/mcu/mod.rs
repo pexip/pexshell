@@ -201,7 +201,7 @@ impl<'auth> ApiClient<'auth> {
     }
 
     #[allow(clippy::too_many_lines)]
-    async fn build_request(&self, request: ApiRequest) -> Result<reqwest::Request, reqwest::Error> {
+    async fn build_request(&self, request: ApiRequest) -> anyhow::Result<reqwest::Request> {
         match request {
             ApiRequest::Get {
                 api,
@@ -212,11 +212,12 @@ impl<'auth> ApiClient<'auth> {
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
                 info!("GET {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
                     .auth_with(&**self.auth)
-                    .await
-                    .build()
+                    .await?
+                    .build()?)
             }
             ApiRequest::GetAll {
                 api,
@@ -236,12 +237,13 @@ impl<'auth> ApiClient<'auth> {
                     "GET_ALL {}  (query parameters are excluded since they may be sensitive)",
                     &uri
                 );
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
                     .auth_with(&**self.auth)
-                    .await
+                    .await?
                     .query(&filter_args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Post {
                 api,
@@ -252,12 +254,13 @@ impl<'auth> ApiClient<'auth> {
                 let uri = format!("{}/{}/", &uri, &resource);
 
                 info!("POST {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .post(uri)
                     .auth_with(&**self.auth)
-                    .await
+                    .await?
                     .json(&args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Patch {
                 api,
@@ -269,12 +272,13 @@ impl<'auth> ApiClient<'auth> {
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
                 info!("PATCH {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .patch(uri)
                     .auth_with(&**self.auth)
-                    .await
+                    .await?
                     .json(&args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Delete {
                 api,
@@ -285,30 +289,33 @@ impl<'auth> ApiClient<'auth> {
                 let uri = format!("{}/{}/{}/", &uri, &resource, &resource_id);
 
                 info!("DELETE {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .delete(uri)
                     .auth_with(&**self.auth)
-                    .await
-                    .build()
+                    .await?
+                    .build()?)
             }
             ApiRequest::ApiSchema { api } => {
                 let uri = self.get_base_uri_for_api(api) + "/";
                 debug!("API_SCHEMA {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
                     .auth_with(&**self.auth)
-                    .await
-                    .build()
+                    .await?
+                    .build()?)
             }
             ApiRequest::Schema { api, resource } => {
                 let uri = self.get_base_uri_for_api(api);
                 let uri = format!("{uri}/{resource}/schema/");
                 debug!("SCHEMA {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
                     .auth_with(&**self.auth)
-                    .await
-                    .build()
+                    .await?
+                    .build()?)
             }
         }
     }
@@ -389,7 +396,13 @@ impl<'auth> ApiClient<'auth> {
                 if limit == 0 {
                     limit = usize::MAX;
                 }
-                let mut request = client.build_request(api_request.clone()).await?;
+                let mut request = client.build_request(api_request.clone()).await.map_err(|e| {
+                    ApiError::new(
+                        e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
+                        format!("error building request: {e}"),
+                        Some(e),
+                    )
+                })?;
 
                 loop {
                     let _hold = client.semaphore.acquire().await.expect("semaphore should never be closed");
@@ -425,7 +438,13 @@ impl<'auth> ApiClient<'auth> {
                     if let Some(uri) = api_response.meta.next {
                         request = client.http_client
                                 .get(format!("{}{}", client.base_address, uri))
-                                .auth_with(&**client.auth).await
+                                .auth_with(&**client.auth).await.map_err(|e| {
+                                    ApiError::new(
+                                        e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
+                                        format!("error building request: {e}"),
+                                        Some(e),
+                                    )
+                                })?
                                 .build()?;
                     } else {
                         break;
@@ -483,9 +502,10 @@ impl<'auth> IApiClient for ApiClient<'auth> {
         } else {
             let request = self.build_request(request).await.map_err(|e| {
                 ApiError::new(
-                    e.status(),
+                    e.downcast_ref::<reqwest::Error>()
+                        .and_then(reqwest::Error::status),
                     format!("error building request: {e}"),
-                    Some(e.into()),
+                    Some(e),
                 )
             })?;
             let method = request.method().clone();

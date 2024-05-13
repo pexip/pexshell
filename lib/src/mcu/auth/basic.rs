@@ -19,8 +19,11 @@ impl BasicAuth {
 
 #[async_trait]
 impl ApiClientAuth for BasicAuth {
-    async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    async fn add_auth(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> anyhow::Result<reqwest::RequestBuilder> {
         debug!("Configuring request with basic authentication");
-        request.basic_auth(&self.username, Some(&self.password.secret()))
+        Ok(request.basic_auth(&self.username, Some(&self.password.secret())))
     }
 }

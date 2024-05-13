@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::Header;
@@ -143,7 +144,10 @@ impl<'callback> OAuth2<'callback> {
 
 #[async_trait]
 impl<'callback> ApiClientAuth for OAuth2<'callback> {
-    async fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    async fn add_auth(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<reqwest::RequestBuilder, anyhow::Error> {
         debug!("Configuring request with OAuth2 authentication");
 
         let mut token = self.token.lock().await;
@@ -153,7 +157,7 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
                     "Using existing OAuth2 token (expires at: {})",
                     token.expires_at
                 );
-                return request.bearer_auth(token.token.secret());
+                return Ok(request.bearer_auth(token.token.secret()));
             }
 
             if token.expires_at < Utc::now() {
@@ -173,11 +177,11 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
 
         let client_key =
             jsonwebtoken::EncodingKey::from_ec_pem(self.client_key.secret().as_bytes())
-                .expect("invalid EC PEM key");
+                .context("invalid EC PEM key")?;
 
         let new_token = Self::get_token(&self.endpoint, &self.client_id, &client_key)
             .await
-            .expect("failed to get OAuth2 token");
+            .context("failed to get OAuth2 token")?;
 
         debug!(
             "Fetched new OAuth2 token (expires at: {})",
@@ -188,7 +192,7 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
 
         (self.token_callback)(token.as_ref().unwrap());
 
-        request.bearer_auth(token.as_ref().unwrap().token.secret())
+        Ok(request.bearer_auth(token.as_ref().unwrap().token.secret()))
     }
 }
 
@@ -273,6 +277,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             )
             .auth_with(&auth)
             .await
+            .unwrap()
             .build()
             .unwrap();
 
@@ -319,6 +324,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             )
             .auth_with(&auth)
             .await
+            .unwrap()
             .build()
             .unwrap();
 
@@ -364,6 +370,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             )
             .auth_with(&auth)
             .await
+            .unwrap()
             .build()
             .unwrap();
 
@@ -409,6 +416,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             )
             .auth_with(&auth)
             .await
+            .unwrap()
             .build()
             .unwrap();
 
