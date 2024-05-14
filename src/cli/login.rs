@@ -919,8 +919,7 @@ mod tests {
                         client_assertion,
                         &server_key,
                         &jwt_validation,
-                    )
-                    .inspect_err(|e| _ = dbg!(e)) else {
+                    ) else {
                         return false;
                     };
 
