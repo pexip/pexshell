@@ -99,10 +99,14 @@ impl<'a> PexShell<'a> {
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
-        let user = config.get_current_user()?.clone();
+        let mut user = config.get_current_user()?.clone();
+        let mcu_address = user.address.clone();
 
-        let api_client =
-            mcu::ApiClient::new(client, &user.address, login::auth_for_user(&user, config)?);
+        let api_client = mcu::ApiClient::new(
+            client,
+            &mcu_address,
+            login::auth_for_user(&mut user, config, true)?,
+        );
         let (api_request, stream_output) = crate::api_request_from_matches(matches, &schemas.0)?;
 
         match api_client.send(api_request).await? {

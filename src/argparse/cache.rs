@@ -42,12 +42,16 @@ impl Cache {
             info!("Cache cleared.");
             eprintln!("Cache cleared.");
         } else {
-            let user = config.get_current_user()?.clone();
+            let mut user = config.get_current_user()?.clone();
+            let address = user.address.clone();
 
             eprintln!("Generating cache...");
             info!("Generating cache...");
-            let api_client =
-                mcu::ApiClient::new(client, &user.address, login::auth_for_user(&user, config)?);
+            let api_client = mcu::ApiClient::new(
+                client,
+                &address,
+                login::auth_for_user(&mut user, config, true)?,
+            );
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
             eprintln!("Cache created.");

@@ -1944,6 +1944,7 @@ dependencies = [
  "git-version",
  "httptest",
  "is-terminal",
+ "jsonwebtoken",
  "keyring",
  "log",
  "mockall",
@@ -1958,6 +1959,7 @@ dependencies = [
  "test_helpers",
  "tokio",
  "toml",
+ "url",
  "uuid",
  "wiremock",
 ]
@@ -3100,6 +3102,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

@@ -112,8 +112,9 @@ fn combine_username(
 }
 
 pub fn auth_for_user<'config>(
-    user: &'config config::User,
+    user: &'config mut config::User,
     config: &'config mut impl ConfigProvider,
+    save_credentials_if_changed: bool,
 ) -> Result<Box<dyn ApiClientAuth + 'config>, lib::error::UserFriendly> {
     match config.get_credentials_for_user(user)? {
         config::Credentials::Basic(credentials) => Ok(Box::new(BasicAuth::new(
@@ -121,9 +122,9 @@ pub fn auth_for_user<'config>(
             credentials.password.unwrap(),
         ))),
         config::Credentials::OAuth2(credentials) => {
-            let config = Mutex::new(config);
             let mcu_address = ApiClient::base_url_from_input_address(&user.address);
             let endpoint = mcu_address + "/oauth/token/";
+            let state = Mutex::new((config, user));
             Ok(Box::new(OAuth2::new(
                 endpoint,
                 credentials.client_id,
@@ -134,8 +135,13 @@ pub fn auth_for_user<'config>(
                     token: t.access_token,
                     expires_at: t.expiry,
                 }),
+                #[allow(clippy::significant_drop_tightening)]
                 move |token| {
-                    if let Err(e) = config.lock().set_oauth2_token(user, token) {
+                    let mut state = state.lock();
+                    let (ref mut config, ref mut user) = *state;
+                    if let Err(e) =
+                        config.set_oauth2_token(user, token, save_credentials_if_changed)
+                    {
                         error!("failed to save OAuth2 token: {}", e);
                     }
                 },
@@ -147,10 +153,11 @@ pub fn auth_for_user<'config>(
 async fn test_request(
     client: reqwest::Client,
     config: &mut impl ConfigProvider,
-    user: &config::User,
+    user: &mut config::User,
 ) -> Result<(), lib::error::UserFriendly> {
-    let auth = auth_for_user(user, config)?;
-    let api_client = ApiClient::new(client, &user.address, auth);
+    let mcu_address = user.address.clone();
+    let auth = auth_for_user(user, config, false)?;
+    let api_client = ApiClient::new(client, &mcu_address, auth);
 
     let ApiResponse::ContentStream(mut stream) = api_client
         .send(ApiRequest::GetAll {
@@ -217,7 +224,7 @@ impl<Backend: Interact> Login<Backend> {
             let mut user = self.input_basic_user();
 
             if verify_credentials {
-                test_request(client, config, &user).await?;
+                test_request(client, config, &mut user).await?;
                 user.last_used = Some(chrono::offset::Utc::now());
             }
 
@@ -233,7 +240,7 @@ impl<Backend: Interact> Login<Backend> {
                 let mut user = self.input_basic_user();
 
                 if verify_credentials {
-                    test_request(client, config, &user).await?;
+                    test_request(client, config, &mut user).await?;
                     user.last_used = Some(chrono::offset::Utc::now());
                 }
 
@@ -260,7 +267,7 @@ impl<Backend: Interact> Login<Backend> {
         let mut user = self.input_oauth2_user(address, client_id);
 
         if verify_credentials {
-            test_request(client, config, &user).await?;
+            test_request(client, config, &mut user).await?;
             user.last_used = Some(chrono::offset::Utc::now());
         }
 
@@ -326,6 +333,8 @@ impl<Backend: Interact> Login<Backend> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use chrono::{FixedOffset, TimeZone, Utc};
     use httptest::{
         all_of,
@@ -333,14 +342,19 @@ mod tests {
         responders::json_encoded,
         Expectation, Server,
     };
+    use jsonwebtoken::{DecodingKey, Validation};
     use lib::util::SensitiveString;
-    use mockall::predicate::eq;
-    use serde_json::json;
-    use test_helpers::VirtualFile;
+    use mockall::{predicate::eq, Sequence};
+    use serde_json::{json, Value};
+    use test_helpers::{fs::OAuth2Credentials as OAuth2CredentialsHelper, VirtualFile};
+    use wiremock::{
+        matchers::{header, method, path},
+        Mock, MockServer, Request, ResponseTemplate,
+    };
 
     use crate::{
         cli::Console,
-        config::{self, BasicCredentials, Credentials, User},
+        config::{self, BasicCredentials, Credentials, OAuth2Credentials, OAuth2Token, User},
     };
 
     use super::{combine_username, Login, MockInteract};
@@ -646,7 +660,7 @@ mod tests {
 
     #[allow(clippy::too_many_lines)]
     #[test]
-    pub fn test_select_user_add_and_verify() {
+    fn test_select_user_add_and_verify() {
         // Arrange
         let server = Server::run();
         let uri = server.url_str("").trim_end_matches('/').to_owned();
@@ -770,6 +784,203 @@ mod tests {
                 true,
                 false,
             ))
+            .unwrap();
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[tokio::test]
+    async fn test_oauth2_add_and_verify() {
+        // Arrange
+        let server = MockServer::start().await;
+        let backend = MockInteract::new();
+        let credentials = OAuth2CredentialsHelper::new("some_client_id");
+        let mut mock_config = config::MockConfigManager::new();
+        let mut login = Login::new(backend);
+
+        mock_config
+            .expect_get_credentials_for_user()
+            .returning(|user| Ok(user.credentials.clone()));
+
+        {
+            let client_key = credentials.get_client_key_pem();
+            login
+                .interact
+                .expect_read_to_end()
+                .once()
+                .return_const(client_key);
+        }
+
+        {
+            let server_key =
+                DecodingKey::from_ec_pem(credentials.get_server_key_pem().as_bytes()).unwrap();
+            let endpoint = format!("{}/oauth/token/", server.uri());
+            Mock::given(method("POST"))
+                .and(path("/oauth/token/"))
+                .and(move |req: &Request| {
+                    // parse request body form data
+                    let form_data: HashMap<_, _> = url::form_urlencoded::parse(&req.body).collect();
+                    if !(form_data.len() == 3
+                        && form_data.get("grant_type").map(AsRef::as_ref)
+                            == Some("client_credentials")
+                        && form_data.get("client_assertion_type").map(AsRef::as_ref)
+                            == Some("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"))
+                    {
+                        return false;
+                    }
+
+                    let Some(client_assertion) = form_data.get("client_assertion") else {
+                        return false;
+                    };
+
+                    let mut jwt_validation = Validation::new(jsonwebtoken::Algorithm::ES256);
+                    jwt_validation.set_audience(&[&endpoint]);
+                    jwt_validation.set_issuer(&["some_client_id"]);
+
+                    let Ok(jwt) = jsonwebtoken::decode::<Value>(
+                        client_assertion,
+                        &server_key,
+                        &jwt_validation,
+                    )
+                    .inspect_err(|e| _ = dbg!(e)) else {
+                        return false;
+                    };
+
+                    let Some(claims) = jwt.claims.as_object() else {
+                        return false;
+                    };
+
+                    claims.len() == 6
+                        && claims.get("iss").and_then(Value::as_str) == Some("some_client_id")
+                        && claims.get("aud").and_then(Value::as_str) == Some(endpoint.as_str())
+                        && claims.get("sub").and_then(Value::as_str) == Some("some_client_id")
+                        && claims
+                            .get("iat")
+                            .and_then(Value::as_i64)
+                            .map_or(false, |iat| {
+                                let now = Utc::now().timestamp();
+                                iat <= now && now <= iat + 60
+                            })
+                        && jwt
+                            .claims
+                            .get("exp")
+                            .and_then(Value::as_i64)
+                            .map_or(false, |exp| {
+                                let now = Utc::now().timestamp();
+                                exp <= now + 3600 && now + 3600 <= exp + 60
+                            })
+                        && jwt
+                            .claims
+                            .get("jti")
+                            .and_then(Value::as_str)
+                            .map_or(false, |jti| !jti.is_empty())
+                })
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "access_token": "some_access_token",
+                    "expires_in": 3600,
+                    "token_type": "Bearer",
+                })))
+                .mount(&server)
+                .await;
+        }
+
+        {
+            let uri = server.uri();
+            mock_config
+                .expect_set_oauth2_token()
+                .withf(move |user, token, save| {
+                    user.address == uri
+                        && token.token.secret() == "some_access_token"
+                        && token.expires_at.timestamp() > Utc::now().timestamp() + 3540
+                        && token.expires_at.timestamp() <= Utc::now().timestamp() + 3600
+                        && !save
+                })
+                .once()
+                .returning(|user, token, _| {
+                    let Credentials::OAuth2(ref mut credentials) = user.credentials else {
+                        panic!("Wrong credential type!")
+                    };
+                    credentials.token = Some(OAuth2Token {
+                        access_token: token.token.clone(),
+                        expiry: token.expires_at,
+                    });
+                    Ok(())
+                });
+        }
+
+        Mock::given(method("GET"))
+            .and(path("/api/admin/status/v1/worker_vm/"))
+            .and(header("Authorization", "Bearer some_access_token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "meta": {
+                    "limit": 1,
+                    "next": null,
+                    "offset": 0,
+                    "previous": null,
+                    "total_count": 0,
+                },
+                "objects": []
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let mut login_seq = Sequence::new();
+
+        {
+            let uri = server.uri();
+            let client_key = credentials.get_client_key_pem();
+            mock_config
+                .expect_add_user()
+                .withf(move |user: &User, plaintext| {
+                    user.address == uri
+                    && matches!(
+                        user.credentials,
+                        Credentials::OAuth2(OAuth2Credentials {
+                            ref client_id,
+                            private_key: Some(ref private_key),
+                            token: Some(ref token),
+                        }) if client_id == "some_client_id" && private_key.secret() == client_key && token.access_token.secret() == "some_access_token"
+                    )
+                    && !*plaintext
+                })
+                .once()
+                .in_sequence(&mut login_seq)
+                .returning(|_, _| Ok(()));
+        }
+
+        {
+            let uri = server.uri();
+            let client_key = credentials.get_client_key_pem();
+            mock_config
+                .expect_set_current_user()
+                .withf(move |user: &User| {
+                    user.address == uri
+                    && matches!(
+                        user.credentials,
+                        Credentials::OAuth2(OAuth2Credentials {
+                            ref client_id,
+                            private_key: Some(ref private_key),
+                            token: Some(ref token),
+                        }) if client_id == "some_client_id" && private_key.secret() == client_key && token.access_token.secret() == "some_access_token"
+                    )
+                    && user.last_used.is_some()
+                })
+                .once()
+                .in_sequence(&mut login_seq)
+                .return_const(());
+        }
+
+        // Act
+        login
+            .add_and_select_oauth2_user(
+                &mut mock_config,
+                reqwest::Client::new(),
+                server.uri(),
+                "some_client_id".to_owned(),
+                true,
+                false,
+            )
+            .await
             .unwrap();
     }
 }

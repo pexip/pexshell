@@ -90,9 +90,11 @@ simple-signal = "1.1"
 [dev-dependencies]
 assert-panic = "1.0"
 httptest.workspace = true
+jsonwebtoken.workspace = true
 mockall.workspace = true
 test-case.workspace = true
 test_helpers = { path = "test_helpers" }
+url.workspace = true
 uuid.workspace = true
 wiremock.workspace = true
 
