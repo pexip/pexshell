@@ -787,6 +787,85 @@ mod tests {
             .unwrap();
     }
 
+    #[tokio::test]
+    async fn test_oauth2_add_no_verify() {
+        // Arrange
+        let backend = MockInteract::new();
+        let credentials = OAuth2CredentialsHelper::new("some_client_id");
+        let mut mock_config = config::MockConfigManager::new();
+        let mut login = Login::new(backend);
+
+        mock_config
+            .expect_get_credentials_for_user()
+            .returning(|user| Ok(user.credentials.clone()));
+
+        {
+            let client_key = credentials.get_client_key_pem();
+            login
+                .interact
+                .expect_read_to_end()
+                .once()
+                .return_const(client_key);
+        }
+
+        let mut login_seq = Sequence::new();
+
+        {
+            let client_key = credentials.get_client_key_pem();
+            mock_config
+                .expect_add_user()
+                .withf(move |user: &User, plaintext| {
+                    user.address == "testing.new"
+                    && matches!(
+                        user.credentials,
+                        Credentials::OAuth2(OAuth2Credentials {
+                            ref client_id,
+                            private_key: Some(ref private_key),
+                            token: None,
+                        }) if client_id == "some_client_id" && private_key.secret() == client_key
+                    )
+                    && !*plaintext
+                })
+                .once()
+                .in_sequence(&mut login_seq)
+                .returning(|_, _| Ok(()));
+        }
+
+        {
+            let client_key = credentials.get_client_key_pem();
+            mock_config
+                .expect_set_current_user()
+                .withf(move |user: &User| {
+                    user.address == "testing.new"
+                    && matches!(
+                        user.credentials,
+                        Credentials::OAuth2(OAuth2Credentials {
+                            ref client_id,
+                            private_key: Some(ref private_key),
+                            token: None,
+                        }) if client_id == "some_client_id" && private_key.secret() == client_key
+                    )
+                    && user.last_used.is_none()
+                })
+                .once()
+                .in_sequence(&mut login_seq)
+                .return_const(());
+        }
+
+        // Act
+        login
+            .add_and_select_oauth2_user(
+                &mut mock_config,
+                reqwest::Client::new(),
+                "testing.new".to_owned(),
+                "some_client_id".to_owned(),
+                false,
+                false,
+            )
+            .await
+            .unwrap();
+    }
+
     #[allow(clippy::too_many_lines)]
     #[tokio::test]
     async fn test_oauth2_add_and_verify() {
