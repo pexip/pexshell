@@ -317,21 +317,22 @@ async fn cache_schema<'auth>(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::future_not_send)]
+
     use super::*;
     use googletest::prelude::*;
-    use httptest::{
-        matchers::{all_of, request},
-        responders::json_encoded,
-        Expectation, Server,
-    };
     use serde_json::json;
     use test_case::test_case;
+    use wiremock::{
+        matchers::{basic_auth, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use crate::{
         mcu::{auth::BasicAuth, ApiClient},
         util::SensitiveString,
     };
-    use test_helpers::{get_test_context, has_credentials};
+    use test_helpers::get_test_context;
 
     const USERNAME: &str = "test";
     const PASSWORD: &str = "testing123";
@@ -354,9 +355,10 @@ mod tests {
         "command/v1/platform",
         "command/platform"
     )]
-    fn test_cache_api(api: Api, api_path: &str, cache_path_from_root: &str) {
+    #[tokio::test]
+    async fn test_cache_api(api: Api, api_path: &str, cache_path_from_root: &str) {
         // Arrange
-        let server = Server::run();
+        let server = MockServer::start().await;
         let test_context = get_test_context();
         let cache_path = test_context.get_cache_dir().to_str().unwrap();
         let root_schema = json!({
@@ -374,43 +376,37 @@ mod tests {
         let mut another_test_endpoint_schema = json_schema();
         another_test_endpoint_schema["marker"] = json!("another_test_endpoint");
 
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", format!("/api/admin/{api_path}/")),
-                has_credentials(USERNAME, PASSWORD),
-            ])
-            .respond_with(json_encoded(&root_schema)),
-        );
+        Mock::given(method("GET"))
+            .and(path(format!("/api/admin/{api_path}/")))
+            .and(basic_auth(USERNAME, PASSWORD))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&root_schema))
+            .mount(&server)
+            .await;
 
-        server.expect(
-            Expectation::matching(request::method_path(
-                "GET",
-                format!("/api/admin/{api_path}/test_endpoint/schema/"),
-            ))
-            .respond_with(json_encoded(&test_endpoint_schema)),
-        );
+        Mock::given(method("GET"))
+            .and(path(format!("/api/admin/{api_path}/test_endpoint/schema/")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&test_endpoint_schema))
+            .mount(&server)
+            .await;
 
-        server.expect(
-            Expectation::matching(request::method_path(
-                "GET",
-                format!("/api/admin/{api_path}/another_test_endpoint/schema/"),
-            ))
-            .respond_with(json_encoded(&another_test_endpoint_schema)),
-        );
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/admin/{api_path}/another_test_endpoint/schema/"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&another_test_endpoint_schema))
+            .mount(&server)
+            .await;
 
         let http_client = reqwest::Client::new();
         let api_client = ApiClient::new_for_testing(
             http_client,
-            String::from(server.url("").to_string().trim_end_matches('/')),
+            server.uri(),
             BasicAuth::new(String::from(USERNAME), SensitiveString::from(PASSWORD)),
         );
 
         // Act
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(cache_api(&api_client, &PathBuf::from(&cache_path), api))
+        cache_api(&api_client, &PathBuf::from(&cache_path), api)
+            .await
             .unwrap();
 
         // Assert
@@ -465,39 +461,30 @@ mod tests {
         "command/v1/platform",
         "command/platform"
     )]
-    fn test_cache_schema(api: Api, api_path: &str, cache_path_from_root: &str) {
+    #[tokio::test]
+    async fn test_cache_schema(api: Api, api_path: &str, cache_path_from_root: &str) {
         // Arrange
-        let server = Server::run();
+        let server = MockServer::start().await;
         let test_context = get_test_context();
         let cache_path = test_context.get_cache_dir().to_str().unwrap();
         let endpoint = "some_endpoint";
 
-        server.expect(
-            Expectation::matching(request::method_path(
-                "GET",
-                format!("/api/admin/{api_path}/some_endpoint/schema/"),
-            ))
-            .respond_with(json_encoded(json_schema())),
-        );
+        Mock::given(method("GET"))
+            .and(path(format!("/api/admin/{api_path}/{endpoint}/schema/")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&json_schema()))
+            .mount(&server)
+            .await;
 
         let http_client = reqwest::Client::new();
         let api_client = ApiClient::new_for_testing(
             http_client,
-            String::from(server.url("").to_string().trim_end_matches('/')),
+            server.uri(),
             BasicAuth::new(String::from(USERNAME), SensitiveString::from(PASSWORD)),
         );
 
         // Act
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(cache_schema(
-                &api_client,
-                &PathBuf::from(&cache_path),
-                api,
-                endpoint,
-            ))
+        cache_schema(&api_client, &PathBuf::from(&cache_path), api, endpoint)
+            .await
             .unwrap();
 
         // Assert

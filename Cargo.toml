@@ -34,7 +34,6 @@ url = { version = "2.5", features = ["serde"] }
 
 # dev & test dependencies
 http = "0.2.11"
-httptest = "0.15.5"
 mockall = "0.11.4"
 test-case = "3.3"
 uuid = { version = "1.7", features = ["v4"] }
@@ -91,7 +90,6 @@ simple-signal = "1.1"
 [dev-dependencies]
 assert-panic = "1.0"
 googletest.workspace = true
-httptest.workspace = true
 jsonwebtoken.workspace = true
 lib = { package = "pex_lib", path = "lib", version = "0.1.0", features = [
     "test_util",

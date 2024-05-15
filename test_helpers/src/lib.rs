@@ -20,8 +20,6 @@ use std::{
     sync::Arc,
 };
 
-use base64::engine::general_purpose::STANDARD as base64;
-use base64::Engine;
 use fs::{Configurer, RootSchemaBuilder, SchemaBuilder};
 use log::{info, warn, LevelFilter};
 use logging::{TestLogger, TestLoggerContext, TestLoggerPermit};
@@ -286,64 +284,4 @@ impl TestContext {
 pub fn get_test_context() -> TestContext {
     let test_dir = get_work_dir_for_test();
     TestContext::new(test_dir)
-}
-
-/// A matcher for use with `httptest::Server`. Matches on basic auth credentials.
-pub struct BasicAuthMatcher {
-    credential: String,
-}
-
-impl<B> httptest::matchers::Matcher<http::Request<B>> for BasicAuthMatcher {
-    fn matches(
-        &mut self,
-        input: &http::Request<B>,
-        _ctx: &mut httptest::matchers::ExecutionContext,
-    ) -> bool {
-        let auth_headers = input
-            .headers()
-            .get_all("authorization")
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        if auth_headers.len() == 1 {
-            let auth_header = auth_headers[0];
-            if let Some(value) = auth_header
-                .to_str()
-                .ok()
-                .and_then(|x| x.strip_prefix("Basic "))
-            {
-                if let Ok(Ok(value)) = base64.decode(value).map(String::from_utf8) {
-                    return value == self.credential;
-                }
-            }
-        }
-        false
-    }
-
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_tuple("BasicAuthMatcher")
-            .field(&self.credential)
-            .finish()
-    }
-}
-
-/// Matches on basic auth credentials. For use with `httptest::Server`.
-///
-/// # Example
-/// ```
-/// use httptest::{Server, Expectation, responders::status_code};
-/// use test_helpers::has_credentials;
-/// use reqwest;
-///
-/// let server = Server::run();
-/// server.expect(Expectation::matching(has_credentials("some_user", "some_password")).respond_with(status_code(200)));
-/// let client = reqwest::blocking::Client::new();
-/// let response = client.get(server.url_str("")).basic_auth("some_user", Some("some_password")).send().unwrap();
-/// assert_eq!(response.status(), 200)
-/// ```
-#[must_use]
-pub fn has_credentials(username: &str, password: &str) -> BasicAuthMatcher {
-    BasicAuthMatcher {
-        credential: format!("{username}:{password}"),
-    }
 }

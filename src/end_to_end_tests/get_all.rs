@@ -3,14 +3,12 @@
 use std::collections::HashMap;
 
 use googletest::prelude::*;
-use httptest::{
-    all_of,
-    matchers::{contains, request, url_decoded},
-    responders::json_encoded,
-    Expectation, Server,
-};
 use serde_json::json;
 use test_helpers::get_test_context;
+use wiremock::{
+    matchers::{method, path, query_param},
+    Mock, MockServer, ResponseTemplate,
+};
 
 use crate::{
     end_to_end_tests::configuration_helpers::{
@@ -23,27 +21,25 @@ use crate::{
 async fn get_returns_zero_objects() {
     // Arrange
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
+    configure_config_test_user(&test_context, server.uri());
     configure_schemas_configuration_conference_only(&test_context);
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/",),
-            request::query(url_decoded(all_of![
-                contains(("limit", "500")),
-                contains(("offset", "0"))
-            ]))
-        ])
-        .respond_with(json_encoded(json!({"meta": {
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/"))
+        .and(query_param("limit", "500"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"meta": {
             "limit": 500,
             "next": null,
             "offset": 0,
             "previous": null,
             "total_count": 0,
-        }, "objects": []}))),
-    );
+        }, "objects": []})))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     // Act
     crate::run_with(
@@ -66,20 +62,16 @@ async fn get_returns_zero_objects() {
 async fn get_returns_page() {
     // Arrange
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
+    configure_config_test_user(&test_context, server.uri());
     configure_schemas_configuration_conference_only(&test_context);
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/",),
-            request::query(url_decoded(all_of![
-                contains(("limit", "500")),
-                contains(("offset", "0"))
-            ]))
-        ])
-        .respond_with(json_encoded(json!({"meta": {
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/"))
+        .and(query_param("limit", "500"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"meta": {
             "limit": 500,
             "next": null,
             "offset": 0,
@@ -94,8 +86,10 @@ async fn get_returns_page() {
                 "id": 2,
                 "name": "test_2",
             },
-        ]}))),
-    );
+        ]})))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     // Act
     crate::run_with(
@@ -130,20 +124,16 @@ async fn get_returns_page() {
 async fn get_multiple_pages() {
     // Arrange
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
+    configure_config_test_user(&test_context, server.uri());
     configure_schemas_configuration_conference_only(&test_context);
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/",),
-            request::query(url_decoded(all_of![
-                contains(("limit", "2")),
-                contains(("offset", "0"))
-            ]))
-        ])
-        .respond_with(json_encoded(json!({
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/"))
+        .and(query_param("limit", "2"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "meta": {
                 "limit": 2,
                 "next": "/api/admin/configuration/v1/conference/?limit=2&offset=2",
@@ -161,30 +151,32 @@ async fn get_multiple_pages() {
                     "name": "test_2",
                 },
             ]
-        }))),
-    );
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/",),
-            request::query(url_decoded(all_of![
-                contains(("limit", "2")),
-                contains(("offset", "2"))
-            ]))
-        ])
-        .respond_with(json_encoded(json!({"meta": {
-            "limit": 2,
-            "next": null,
-            "offset": 2,
-            "previous": "/api/admin/configuration/v1/conference/?limit=2&offset=0",
-            "total_count": 3,
-        }, "objects": [
-            {
-                "id": 3,
-                "name": "test_3",
-            },
-        ]}))),
-    );
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/"))
+        .and(query_param("limit", "2"))
+        .and(query_param("offset", "2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "meta": {
+                "limit": 2,
+                "next": null,
+                "offset": 2,
+                "previous": "/api/admin/configuration/v1/conference/?limit=2&offset=0",
+                "total_count": 3,
+            }, "objects": [
+                {
+                    "id": 3,
+                    "name": "test_3",
+                },
+            ]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     // Act
     crate::run_with(
@@ -231,20 +223,16 @@ async fn get_multiple_pages() {
 async fn get_limited_to_first_page() {
     // Arrange
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
+    configure_config_test_user(&test_context, server.uri());
     configure_schemas_configuration_conference_only(&test_context);
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/",),
-            request::query(url_decoded(all_of![
-                contains(("limit", "2")),
-                contains(("offset", "0"))
-            ]))
-        ])
-        .respond_with(json_encoded(json!({"meta": {
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/"))
+        .and(query_param("limit", "2"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"meta": {
             "limit": 2,
             "next": "/api/admin/configuration/v1/conference/?limit=2&offset=2",
             "offset": 2,
@@ -259,8 +247,10 @@ async fn get_limited_to_first_page() {
                 "id": 2,
                 "name": "test_2",
             }
-        ]}))),
-    );
+        ]})))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     // Act
     crate::run_with(
