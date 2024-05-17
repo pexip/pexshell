@@ -104,7 +104,7 @@ impl<'callback> OAuth2<'callback> {
         let issued_at = Utc::now();
         let expires_at = issued_at + chrono::Duration::hours(1);
         let token_id = Self::generate_token_id();
-        debug!("Generated token ID: {}", token_id);
+        debug!("Generated token ID: {token_id}");
 
         let claims = jsonwebtoken::encode(
             &Header::new(jsonwebtoken::Algorithm::ES256),

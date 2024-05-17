@@ -116,7 +116,7 @@ impl Default for CommandApi {
 
 #[async_trait]
 pub trait IApiClient {
-    async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>>;
+    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
 
 pub struct ApiClient<'auth> {
@@ -631,7 +631,7 @@ pub enum ApiResponse<'a> {
     ContentStream(util::StreamWrapper<'a, Result<Value, ApiClientError>>),
 }
 
-impl<'a> ApiResponse<'a> {
+impl ApiResponse<'_> {
     #[must_use]
     pub fn unwrap_content_or_default(self) -> Value {
         if let Self::Content(content) = self {
