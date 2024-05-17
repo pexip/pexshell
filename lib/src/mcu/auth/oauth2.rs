@@ -11,7 +11,7 @@ use rand::Rng;
 use serde::ser::SerializeStruct;
 use tokio::sync::Mutex;
 
-use crate::util::SensitiveString;
+use crate::{mcu::error, util::SensitiveString};
 
 use super::ApiClientAuth;
 
@@ -59,6 +59,7 @@ impl<'a> serde::Serialize for Claims<'a> {
 }
 
 pub struct OAuth2<'callback> {
+    http_client: reqwest::Client,
     endpoint: String,
     client_id: String,
     /// Private key (ES256)
@@ -71,6 +72,7 @@ pub struct OAuth2<'callback> {
 impl<'callback> OAuth2<'callback> {
     #[must_use]
     pub fn new(
+        http_client: reqwest::Client,
         endpoint: String,
         client_id: String,
         client_key: SensitiveString,
@@ -78,6 +80,7 @@ impl<'callback> OAuth2<'callback> {
         token_callback: impl Fn(&AuthToken) + Send + Sync + 'callback,
     ) -> Self {
         Self {
+            http_client,
             endpoint,
             client_id,
             client_key,
@@ -93,6 +96,7 @@ impl<'callback> OAuth2<'callback> {
     }
 
     async fn get_token(
+        http_client: &reqwest::Client,
         endpoint: &str,
         client_id: &str,
         client_key: &jsonwebtoken::EncodingKey,
@@ -115,8 +119,6 @@ impl<'callback> OAuth2<'callback> {
         )
         .unwrap();
 
-        let client = reqwest::Client::new();
-
         let mut form_data = HashMap::new();
         form_data.insert("grant_type", "client_credentials");
         form_data.insert(
@@ -125,13 +127,8 @@ impl<'callback> OAuth2<'callback> {
         );
         form_data.insert("client_assertion", claims.as_str());
 
-        let request = client.post(endpoint).form(&form_data).build()?;
-        let response = client.execute(request).await?.error_for_status()?;
-
-        // let response_body: serde_json::Value = response.json().await?;
-        // eprintln!("Response: {:?}", &response_body);
-        // let token =
-        //     SensitiveString::from(response_body.get("access_token").unwrap().as_str().unwrap());
+        let request = http_client.post(endpoint).form(&form_data).build()?;
+        let response = http_client.execute(request).await?.error_for_status()?;
 
         let response_body: TokenResponse = response.json().await?;
 
@@ -179,9 +176,15 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
             jsonwebtoken::EncodingKey::from_ec_pem(self.client_key.secret().as_bytes())
                 .context("invalid EC PEM key")?;
 
-        let new_token = Self::get_token(&self.endpoint, &self.client_id, &client_key)
-            .await
-            .context("failed to get OAuth2 token")?;
+        let new_token = Self::get_token(
+            &self.http_client,
+            &self.endpoint,
+            &self.client_id,
+            &client_key,
+        )
+        .await
+        .map_err(error::ReqwestDebugPrintWrapper)
+        .context("failed to get OAuth2 token")?;
 
         debug!(
             "Fetched new OAuth2 token (expires at: {})",
@@ -239,6 +242,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         let token_from_callback: std::sync::Mutex<Option<AuthToken>> = std::sync::Mutex::new(None);
 
         let auth = OAuth2::new(
+            client.clone(),
             server.url("/oauth/token/").to_string(),
             "test_client".to_string(),
             client_key,

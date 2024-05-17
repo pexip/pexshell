@@ -48,9 +48,9 @@ impl Cache {
             eprintln!("Generating cache...");
             info!("Generating cache...");
             let api_client = mcu::ApiClient::new(
-                client,
+                client.clone(),
                 &address,
-                login::auth_for_user(&mut user, config, true)?,
+                login::auth_for_user(client, &mut user, config, true)?,
             );
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");

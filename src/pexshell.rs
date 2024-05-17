@@ -103,9 +103,9 @@ impl<'a> PexShell<'a> {
         let mcu_address = user.address.clone();
 
         let api_client = mcu::ApiClient::new(
-            client,
+            client.clone(),
             &mcu_address,
-            login::auth_for_user(&mut user, config, true)?,
+            login::auth_for_user(client, &mut user, config, true)?,
         );
         let (api_request, stream_output) = crate::api_request_from_matches(matches, &schemas.0)?;
 

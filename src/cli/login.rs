@@ -112,6 +112,7 @@ fn combine_username(
 }
 
 pub fn auth_for_user<'config>(
+    http_client: reqwest::Client,
     user: &'config mut config::User,
     config: &'config mut impl ConfigProvider,
     save_credentials_if_changed: bool,
@@ -126,6 +127,7 @@ pub fn auth_for_user<'config>(
             let endpoint = mcu_address + "/oauth/token/";
             let state = Mutex::new((config, user));
             Ok(Box::new(OAuth2::new(
+                http_client,
                 endpoint,
                 credentials.client_id,
                 credentials
@@ -156,7 +158,7 @@ async fn test_request(
     user: &mut config::User,
 ) -> Result<(), lib::error::UserFriendly> {
     let mcu_address = user.address.clone();
-    let auth = auth_for_user(user, config, false)?;
+    let auth = auth_for_user(client.clone(), user, config, false)?;
     let api_client = ApiClient::new(client, &mcu_address, auth);
 
     let ApiResponse::ContentStream(mut stream) = api_client

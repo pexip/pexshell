@@ -1,5 +1,28 @@
 #![allow(clippy::module_name_repetitions)]
-use std::{error::Error, fmt::Display};
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+};
+
+/// A wrapper for [`reqwest::Error`] that prevents it from printing repetitive error chains.
+///
+/// When printing `anyhow::Error` chains with `{:#}`, the `#` gets applied to the inner `reqwest::Error` as well.
+/// This leads to it printing the same error chain multiple times, which is confusing and unnecessary.
+/// Instead, we can simply wrap the inner `reqwest::Error` in this struct that ignores the `#` flag.
+pub struct ReqwestDebugPrintWrapper(pub reqwest::Error);
+
+impl Display for ReqwestDebugPrintWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl Debug for ReqwestDebugPrintWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl Error for ReqwestDebugPrintWrapper {}
 
 pub struct ApiError {
     status: Option<reqwest::StatusCode>,

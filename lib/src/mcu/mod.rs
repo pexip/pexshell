@@ -320,7 +320,7 @@ impl<'auth> ApiClient<'auth> {
         }
     }
 
-    async fn handle_api_errors(
+    pub async fn handle_api_errors(
         response: reqwest::Result<reqwest::Response>,
     ) -> Result<reqwest::Response, ApiError> {
         match response {
@@ -399,7 +399,7 @@ impl<'auth> ApiClient<'auth> {
                 let mut request = client.build_request(api_request.clone()).await.map_err(|e| {
                     ApiError::new(
                         e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
-                        format!("error building request: {e}"),
+                        format!("error building request: {e:#}"),
                         Some(e),
                     )
                 })?;
@@ -441,7 +441,7 @@ impl<'auth> ApiClient<'auth> {
                                 .auth_with(&**client.auth).await.map_err(|e| {
                                     ApiError::new(
                                         e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
-                                        format!("error building request: {e}"),
+                                        format!("error building request: {e:#}"),
                                         Some(e),
                                     )
                                 })?
@@ -504,7 +504,7 @@ impl<'auth> IApiClient for ApiClient<'auth> {
                 ApiError::new(
                     e.downcast_ref::<reqwest::Error>()
                         .and_then(reqwest::Error::status),
-                    format!("error building request: {e}"),
+                    format!("error building request: {e:#}"),
                     Some(e),
                 )
             })?;
