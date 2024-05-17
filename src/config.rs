@@ -674,7 +674,7 @@ impl Configurer for Manager {
                             ))
                         })?;
 
-                    if let Some(token) = &credentials.token {
+                    if let Some(token) = &credentials.token.take() {
                         self.keyring
                             .lock()
                             .save(
@@ -1290,7 +1290,7 @@ current_user = true
     }
 
     #[test]
-    fn test_add_user_with_credential_store() {
+    fn test_add_basic_auth_user_with_credential_store() {
         // Arrange
         let test_context = get_test_context();
         let config = Config {
@@ -1390,6 +1390,250 @@ current_user = true
                 username,
                 password: None,
             }) if username == "a_new_user"
+        ));
+        assert!(!users[2].current_user);
+    }
+
+    #[test]
+    fn test_add_oauth2_user_with_credential_store_no_token() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
+                    current_user: false,
+                    last_used: None,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
+                    current_user: true,
+                    last_used: None,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut keyring = credentials::MockProvider::new();
+        keyring
+            .expect_save()
+            .with(
+                eq("new_address.testing.com"),
+                eq("a_new_oauth2_user-privkey"),
+                function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
+            )
+            .once()
+            .return_once(|_, _, _| Ok(()));
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            false,
+            test_context.get_stderr_wrapper(),
+        );
+
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &lock_path,
+            HashMap::default(),
+            keyring,
+            &mut console,
+        )
+        .unwrap();
+        let new_user = User {
+            address: String::from("new_address.testing.com"),
+            credentials: Credentials::OAuth2(OAuth2Credentials {
+                client_id: String::from("a_new_oauth2_user"),
+                private_key: Some(SensitiveString::from("some_new_private_key")),
+                token: None,
+            }),
+            current_user: false,
+            last_used: None,
+        };
+
+        // Act
+        mgr.add_user(new_user, false).unwrap();
+
+        // Assert
+        let users = mgr.get_users();
+        assert_eq!(users.len(), 3);
+        assert_eq!(users[0].address, "test_address.test.com");
+        assert!(matches!(
+            &users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                username,
+                password: Some(password),
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
+        assert!(!users[0].current_user);
+        assert_eq!(users[1].address, "test_address.testing.com");
+        assert!(matches!(
+            &users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                username,
+                password: None,
+            }) if username == "a_user"
+        ));
+        assert!(users[1].current_user);
+        assert_eq!(users[2].address, "new_address.testing.com");
+        assert!(matches!(
+            &users[2].credentials,
+            Credentials::OAuth2(OAuth2Credentials {
+                client_id,
+                private_key: None,
+                token: None,
+            }) if client_id == "a_new_oauth2_user"
+        ));
+        assert!(!users[2].current_user);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn test_add_oauth2_user_with_credential_store_with_token() {
+        // Arrange
+        let test_context = get_test_context();
+        let config = Config {
+            log: Some(Logging {
+                file: Some(PathBuf::from("/path/to/some/pexshell.log")),
+                level: Some(String::from("debug")),
+                stderr: None,
+            }),
+            users: vec![
+                User {
+                    address: String::from("test_address.test.com"),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("admin"),
+                        password: Some(SensitiveString::from("some_admin_password")),
+                    }),
+                    current_user: false,
+                    last_used: None,
+                },
+                User {
+                    address: String::from("test_address.testing.com"),
+                    credentials: Credentials::Basic(BasicCredentials {
+                        username: String::from("a_user"),
+                        password: None,
+                    }),
+                    current_user: true,
+                    last_used: None,
+                },
+            ],
+        };
+
+        let config_path = test_context.get_test_dir().join("config.toml");
+        let lock_path = test_context.get_test_dir().join("config.lock");
+        let mut keyring = credentials::MockProvider::new();
+        keyring
+            .expect_save()
+            .with(
+                eq("new_address.testing.com"),
+                eq("a_new_oauth2_user-privkey"),
+                function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
+            )
+            .once()
+            .return_once(|_, _, _| Ok(()));
+
+        let token_expiry = DateTime::parse_from_rfc3339("2014-11-19T14:52:23Z")
+            .unwrap()
+            .to_utc();
+        keyring
+            .expect_save()
+            .with(
+                eq("new_address.testing.com"),
+                eq("a_new_oauth2_user-token"),
+                function(move |s: &SensitiveString| {
+                    matches!(
+                        serde_json::from_str(s.secret()),
+                        Ok(OAuth2Token {
+                            access_token,
+                            expiry,
+                        }) if access_token.secret() == "some_new_oauth2_token"
+                            && expiry == token_expiry
+                    )
+                }),
+            )
+            .once()
+            .return_once(|_, _, _| Ok(()));
+        let mut console = Console::new(
+            false,
+            test_context.get_stdout_wrapper(),
+            false,
+            test_context.get_stderr_wrapper(),
+        );
+
+        let mut mgr = Manager::with_config_and_keyring(
+            config,
+            &config_path,
+            &lock_path,
+            HashMap::default(),
+            keyring,
+            &mut console,
+        )
+        .unwrap();
+        let last_used = DateTime::parse_from_rfc3339("2014-11-19T14:52:24Z")
+            .unwrap()
+            .to_utc();
+        let new_user = User {
+            address: String::from("new_address.testing.com"),
+            credentials: Credentials::OAuth2(OAuth2Credentials {
+                client_id: String::from("a_new_oauth2_user"),
+                private_key: Some(SensitiveString::from("some_new_private_key")),
+                token: Some(OAuth2Token {
+                    access_token: SensitiveString::from("some_new_oauth2_token"),
+                    expiry: token_expiry,
+                }),
+            }),
+            current_user: false,
+            last_used: Some(last_used),
+        };
+
+        // Act
+        mgr.add_user(new_user, false).unwrap();
+
+        // Assert
+        let users = mgr.get_users();
+        assert_eq!(users.len(), 3);
+        assert_eq!(users[0].address, "test_address.test.com");
+        assert!(matches!(
+            &users[0].credentials,
+            Credentials::Basic(BasicCredentials {
+                username,
+                password: Some(password),
+            }) if username == "admin" && password.secret() == "some_admin_password"
+        ));
+        assert!(!users[0].current_user);
+        assert_eq!(users[1].address, "test_address.testing.com");
+        assert!(matches!(
+            &users[1].credentials,
+            Credentials::Basic(BasicCredentials {
+                username,
+                password: None,
+            }) if username == "a_user"
+        ));
+        assert!(users[1].current_user);
+        assert_eq!(users[2].address, "new_address.testing.com");
+        dbg!(&users[2]);
+        assert!(matches!(
+            &users[2].credentials,
+            Credentials::OAuth2(OAuth2Credentials {
+                client_id,
+                private_key: None,
+                token: None,
+            }) if client_id == "a_new_oauth2_user"
         ));
         assert!(!users[2].current_user);
     }
