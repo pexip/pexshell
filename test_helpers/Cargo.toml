@@ -7,20 +7,24 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-base64 = "0.21.7"
+base64 = "0.22.1"
 chrono.workspace = true
 console.workspace = true
 http.workspace = true
 httptest.workspace = true
+jsonwebtoken.workspace = true
 log.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+p256 = "0.13.2"
+rand = "0.8.5"
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
 tokio.workspace = true
 toml.workspace = true
 uuid.workspace = true
+zeroize = "1.7"
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["blocking", "rustls"] }

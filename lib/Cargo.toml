@@ -17,9 +17,12 @@ async-trait.workspace = true
 chrono.workspace = true
 console.workspace = true
 futures.workspace = true
+hex = "0.4.3"
 hyper.workspace = true
+jsonwebtoken.workspace = true
 log.workspace = true
 parking_lot.workspace = true
+rand = "0.8.5"
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -34,6 +37,7 @@ httptest.workspace = true
 test-case.workspace = true
 test_helpers = { path = "../test_helpers" }
 uuid.workspace = true
+tokio = { workspace = true, features = ["full"] }
 
 [features]
 all_logs = []

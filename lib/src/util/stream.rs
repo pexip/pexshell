@@ -3,18 +3,18 @@ use std::pin::Pin;
 use futures::{executor::BlockingStream, Stream};
 
 #[allow(clippy::module_name_repetitions)]
-pub struct StreamWrapper<T> {
-    inner: Pin<Box<dyn Stream<Item = T> + Send>>,
+pub struct StreamWrapper<'a, T> {
+    inner: Pin<Box<dyn Stream<Item = T> + Send + 'a>>,
 }
 
-impl<T> StreamWrapper<T> {
+impl<'a, T> StreamWrapper<'a, T> {
     #[must_use]
-    pub fn new(inner: Pin<Box<dyn Stream<Item = T> + Send>>) -> Self {
+    pub fn new(inner: Pin<Box<dyn Stream<Item = T> + Send + 'a>>) -> Self {
         Self { inner }
     }
 }
 
-impl<T> Stream for StreamWrapper<T> {
+impl<'a, T> Stream for StreamWrapper<'a, T> {
     type Item = T;
 
     fn poll_next(
@@ -25,7 +25,7 @@ impl<T> Stream for StreamWrapper<T> {
     }
 }
 
-impl<T> std::iter::IntoIterator for StreamWrapper<T> {
+impl<'a, T> std::iter::IntoIterator for StreamWrapper<'a, T> {
     type IntoIter = BlockingStream<Self>;
     type Item = T;
 

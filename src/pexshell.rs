@@ -2,7 +2,7 @@
 
 use crate::{
     argparse,
-    cli::Console,
+    cli::{login, Console},
     config::{Config, Manager as ConfigManager, Provider as ConfigProvider},
     Directories, LOGGER,
 };
@@ -99,13 +99,13 @@ impl<'a> PexShell<'a> {
         matches: &clap::ArgMatches,
         schemas: &argparse::CommandGen,
     ) -> anyhow::Result<()> {
-        let user = config.get_current_user()?;
+        let mut user = config.get_current_user()?.clone();
+        let mcu_address = user.address.clone();
 
         let api_client = mcu::ApiClient::new(
-            client,
-            &user.address,
-            user.username.clone(),
-            config.get_password_for_user(user)?,
+            client.clone(),
+            &mcu_address,
+            login::auth_for_user(client, &mut user, config, true)?,
         );
         let (api_request, stream_output) = crate::api_request_from_matches(matches, &schemas.0)?;
 
@@ -132,6 +132,8 @@ impl<'a> PexShell<'a> {
             }
             ApiResponse::Nothing => (),
         };
+
+        drop(api_client);
 
         config.set_last_used()?;
 

@@ -1,4 +1,4 @@
-use crate::config::Provider as ConfigProvider;
+use crate::{cli::login, config::Provider as ConfigProvider};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use lib::{
     error,
@@ -42,19 +42,21 @@ impl Cache {
             info!("Cache cleared.");
             eprintln!("Cache cleared.");
         } else {
-            let user = config.get_current_user()?;
+            let mut user = config.get_current_user()?.clone();
+            let address = user.address.clone();
 
             eprintln!("Generating cache...");
             info!("Generating cache...");
             let api_client = mcu::ApiClient::new(
-                client,
-                &user.address,
-                user.username.clone(),
-                config.get_password_for_user(user)?,
+                client.clone(),
+                &address,
+                login::auth_for_user(client, &mut user, config, true)?,
             );
             schema::cache_schemas(&api_client, cache_dir).await?;
             info!("Cache created.");
             eprintln!("Cache created.");
+
+            drop(api_client);
 
             config.set_last_used()?;
         }

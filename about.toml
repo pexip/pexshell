@@ -1,4 +1,4 @@
-accepted = ["MIT", "Apache-2.0"]
+accepted = ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause"]
 workarounds = ["ring", "chrono", "rustls"]
 
 [async-trait.clarify]
@@ -66,12 +66,12 @@ license = "MIT OR Apache-2.0"
 [[time.clarify.files]]
 path = "LICENSE-Apache"
 license = "Apache-2.0"
-checksum = "b8929fea28678da67251fb2daf9438f67503814211051861612441806d8edb05"
+checksum = "edd65bdd88957a205c47d53fa499eed8865a70320f0f03f6391668cb304ea376"
 
 [[time.clarify.files]]
 path = "LICENSE-MIT"
 license = "MIT"
-checksum = "04620bf27e4a643dd47bf27652320c205acdb776c1f9f24bb8c3bfaba10804c5"
+checksum = "231c837c45eb53f108fb48929e488965bc4fcc14e9ea21d35f50e6b99d98685b"
 
 [typenum.clarify]
 license = "MIT OR Apache-2.0"

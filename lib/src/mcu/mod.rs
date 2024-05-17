@@ -1,3 +1,4 @@
+pub mod auth;
 mod error;
 pub mod schema;
 
@@ -19,7 +20,9 @@ use tokio::sync::Semaphore;
 
 pub use error::*;
 
-use crate::util::{self, SensitiveString};
+use crate::util;
+
+use self::auth::{ApiClientAuth, AuthWith};
 
 #[derive(EnumIter, Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
 #[strum(serialize_all = "snake_case")]
@@ -116,29 +119,48 @@ pub trait IApiClient {
     async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse>;
 }
 
-#[derive(Debug, Clone)]
-pub struct ApiClient {
+pub struct ApiClient<'auth> {
     http_client: reqwest::Client,
     base_address: String,
-    username: String,
-    password: SensitiveString,
+    auth: Arc<Box<dyn ApiClientAuth + 'auth>>,
     semaphore: Arc<Semaphore>,
 }
 
-impl ApiClient {
+impl<'auth> Clone for ApiClient<'auth> {
+    fn clone(&self) -> Self {
+        Self {
+            http_client: self.http_client.clone(),
+            base_address: self.base_address.clone(),
+            auth: self.auth.clone(),
+            semaphore: self.semaphore.clone(),
+        }
+    }
+}
+
+impl<'auth> ApiClient<'auth> {
+    #[must_use]
+    pub fn base_url_from_input_address(input_address: &str) -> String {
+        if input_address.starts_with("http://") {
+            warn!("Using insecure http protocol!");
+            String::from(input_address)
+        } else if input_address.starts_with("https://") {
+            String::from(input_address)
+        } else {
+            format!("https://{input_address}")
+        }
+    }
+
     #[cfg(test)]
     #[must_use]
     pub fn new_for_testing(
         http_client: reqwest::Client,
         mcu_address: String,
-        mcu_username: String,
-        mcu_password: SensitiveString,
+        auth: impl ApiClientAuth + 'static,
     ) -> Self {
         Self {
             http_client,
             base_address: mcu_address,
-            username: mcu_username,
-            password: mcu_password,
+            auth: Arc::new(Box::new(auth)),
             semaphore: Arc::new(Semaphore::new(5)),
         }
     }
@@ -147,23 +169,14 @@ impl ApiClient {
     pub fn new(
         http_client: reqwest::Client,
         mcu_address: &str,
-        mcu_username: String,
-        mcu_password: SensitiveString,
+        auth: Box<dyn ApiClientAuth + 'auth>,
     ) -> Self {
-        let base_address = if mcu_address.starts_with("http://") {
-            warn!("Using insecure http protocol!");
-            String::from(mcu_address)
-        } else if mcu_address.starts_with("https://") {
-            String::from(mcu_address)
-        } else {
-            format!("https://{mcu_address}")
-        };
+        let base_address = Self::base_url_from_input_address(mcu_address);
 
         Self {
             http_client,
             base_address,
-            username: mcu_username,
-            password: mcu_password,
+            auth: Arc::new(auth),
             semaphore: Arc::new(Semaphore::new(5)), // This limit is fairly arbitrary, but too many requests causes the management node to get bogged down!
         }
     }
@@ -187,7 +200,8 @@ impl ApiClient {
         }
     }
 
-    fn build_request(&self, request: ApiRequest) -> Result<reqwest::Request, reqwest::Error> {
+    #[allow(clippy::too_many_lines)]
+    async fn build_request(&self, request: ApiRequest) -> anyhow::Result<reqwest::Request> {
         match request {
             ApiRequest::Get {
                 api,
@@ -198,10 +212,12 @@ impl ApiClient {
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
                 info!("GET {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
-                    .build()
+                    .auth_with(&**self.auth)
+                    .await?
+                    .build()?)
             }
             ApiRequest::GetAll {
                 api,
@@ -221,11 +237,13 @@ impl ApiClient {
                     "GET_ALL {}  (query parameters are excluded since they may be sensitive)",
                     &uri
                 );
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&**self.auth)
+                    .await?
                     .query(&filter_args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Post {
                 api,
@@ -236,11 +254,13 @@ impl ApiClient {
                 let uri = format!("{}/{}/", &uri, &resource);
 
                 info!("POST {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .post(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&**self.auth)
+                    .await?
                     .json(&args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Patch {
                 api,
@@ -252,11 +272,13 @@ impl ApiClient {
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
                 info!("PATCH {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .patch(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
+                    .auth_with(&**self.auth)
+                    .await?
                     .json(&args)
-                    .build()
+                    .build()?)
             }
             ApiRequest::Delete {
                 api,
@@ -267,32 +289,38 @@ impl ApiClient {
                 let uri = format!("{}/{}/{}/", &uri, &resource, &resource_id);
 
                 info!("DELETE {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .delete(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
-                    .build()
+                    .auth_with(&**self.auth)
+                    .await?
+                    .build()?)
             }
             ApiRequest::ApiSchema { api } => {
                 let uri = self.get_base_uri_for_api(api) + "/";
                 debug!("API_SCHEMA {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
-                    .build()
+                    .auth_with(&**self.auth)
+                    .await?
+                    .build()?)
             }
             ApiRequest::Schema { api, resource } => {
                 let uri = self.get_base_uri_for_api(api);
                 let uri = format!("{uri}/{resource}/schema/");
                 debug!("SCHEMA {}", &uri);
-                self.http_client
+                Ok(self
+                    .http_client
                     .get(uri)
-                    .basic_auth(&self.username, Some(self.password.secret()))
-                    .build()
+                    .auth_with(&**self.auth)
+                    .await?
+                    .build()?)
             }
         }
     }
 
-    async fn handle_api_errors(
+    pub async fn handle_api_errors(
         response: reqwest::Result<reqwest::Response>,
     ) -> Result<reqwest::Response, ApiError> {
         match response {
@@ -358,7 +386,7 @@ impl ApiClient {
     fn streamed_response(
         self,
         api_request: ApiRequest,
-    ) -> impl Stream<Item = Result<Value, ApiClientError>> + Send {
+    ) -> impl Stream<Item = Result<Value, ApiClientError>> + Send + 'auth {
         try_stream! {
             let client = self;
             if let ApiRequest::GetAll {
@@ -368,7 +396,13 @@ impl ApiClient {
                 if limit == 0 {
                     limit = usize::MAX;
                 }
-                let mut request = client.build_request(api_request.clone())?;
+                let mut request = client.build_request(api_request.clone()).await.map_err(|e| {
+                    ApiError::new(
+                        e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
+                        format!("error building request: {e:#}"),
+                        Some(e),
+                    )
+                })?;
 
                 loop {
                     let _hold = client.semaphore.acquire().await.expect("semaphore should never be closed");
@@ -404,7 +438,13 @@ impl ApiClient {
                     if let Some(uri) = api_response.meta.next {
                         request = client.http_client
                                 .get(format!("{}{}", client.base_address, uri))
-                                .basic_auth(&client.username, Some(client.password.secret()))
+                                .auth_with(&**client.auth).await.map_err(|e| {
+                                    ApiError::new(
+                                        e.downcast_ref::<reqwest::Error>().and_then(reqwest::Error::status),
+                                        format!("error building request: {e:#}"),
+                                        Some(e),
+                                    )
+                                })?
                                 .build()?;
                     } else {
                         break;
@@ -443,10 +483,10 @@ struct JsonError {
     error: String,
 }
 
-#[async_trait]
 #[allow(clippy::no_effect_underscore_binding)]
-impl IApiClient for ApiClient {
-    async fn send(&self, request: ApiRequest) -> anyhow::Result<ApiResponse> {
+#[async_trait]
+impl<'auth> IApiClient for ApiClient<'auth> {
+    async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>> {
         let is_command = matches!(
             request,
             ApiRequest::Post {
@@ -460,11 +500,12 @@ impl IApiClient for ApiClient {
                 Box::pin(stream_client.streamed_response(r)),
             )))
         } else {
-            let request = self.build_request(request).map_err(|e| {
+            let request = self.build_request(request).await.map_err(|e| {
                 ApiError::new(
-                    e.status(),
-                    format!("error building request: {e}"),
-                    Some(e.into()),
+                    e.downcast_ref::<reqwest::Error>()
+                        .and_then(reqwest::Error::status),
+                    format!("error building request: {e:#}"),
+                    Some(e),
                 )
             })?;
             let method = request.method().clone();
@@ -583,14 +624,14 @@ impl ApiRequest {
     }
 }
 
-pub enum ApiResponse {
+pub enum ApiResponse<'a> {
     Nothing,
     Location(String),
     Content(Value),
-    ContentStream(util::StreamWrapper<Result<Value, ApiClientError>>),
+    ContentStream(util::StreamWrapper<'a, Result<Value, ApiClientError>>),
 }
 
-impl ApiResponse {
+impl ApiResponse<'_> {
     #[must_use]
     pub fn unwrap_content_or_default(self) -> Value {
         if let Self::Content(content) = self {

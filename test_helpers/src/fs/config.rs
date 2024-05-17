@@ -1,16 +1,28 @@
 use std::path::PathBuf;
 
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use p256::pkcs8::*;
+use p256::{ecdsa, pkcs8::LineEnding};
+use rand::rngs::OsRng;
 use serde::Serialize;
 use toml::{self, Value};
 
 use crate::TestContext;
 
 #[derive(Serialize)]
+struct OAuth2Token {
+    access_token: String,
+    expiry: DateTime<Utc>,
+}
+
+#[derive(Serialize)]
 struct User {
     address: String,
-    username: String,
-    password: String,
+    username: Option<String>,
+    password: Option<String>,
+    client_id: Option<String>,
+    private_key: Option<String>,
+    token: Option<OAuth2Token>,
     #[allow(clippy::struct_field_names)]
     current_user: bool,
     #[serde(with = "ts_seconds_option", default)]
@@ -36,7 +48,7 @@ impl Configurer {
     }
 
     #[must_use]
-    pub fn add_user(
+    pub fn add_basic_user(
         mut self,
         address: impl Into<String>,
         username: impl Into<String>,
@@ -45,10 +57,36 @@ impl Configurer {
     ) -> Self {
         self.config.users.push(User {
             address: address.into(),
-            username: username.into(),
-            password: password.into(),
+            username: Some(username.into()),
+            password: Some(password.into()),
             current_user,
             last_used: None,
+            client_id: None,
+            private_key: None,
+            token: None,
+        });
+        self
+    }
+
+    #[must_use]
+    pub fn add_oauth2_user(
+        mut self,
+        address: impl Into<String>,
+        credentials: &OAuth2Credentials,
+        current_user: bool,
+    ) -> Self {
+        self.config.users.push(User {
+            address: address.into(),
+            client_id: Some(credentials.client_id.clone()),
+            private_key: Some(credentials.get_client_key_pem()),
+            token: credentials.access_token.as_ref().map(|t| OAuth2Token {
+                access_token: t.client_secret.clone(),
+                expiry: t.expiry,
+            }),
+            current_user,
+            last_used: None,
+            username: None,
+            password: None,
         });
         self
     }
@@ -83,5 +121,62 @@ impl Configurer {
             toml::to_string(&expected).unwrap(),
             toml::to_string(&actual).unwrap()
         );
+    }
+}
+
+struct OAuth2AccessToken {
+    client_secret: String,
+    expiry: DateTime<Utc>,
+}
+
+pub struct OAuth2Credentials {
+    client_id: String,
+    client_key: ecdsa::SigningKey,
+    server_key: ecdsa::VerifyingKey,
+    access_token: Option<OAuth2AccessToken>,
+}
+
+impl OAuth2Credentials {
+    pub fn new(client_id: impl Into<String>) -> Self {
+        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let server_key = ecdsa::VerifyingKey::from(&client_key);
+        Self {
+            client_id: client_id.into(),
+            client_key,
+            server_key,
+            access_token: None,
+        }
+    }
+
+    pub fn new_with_access_token(
+        client_id: impl Into<String>,
+        client_secret: impl Into<String>,
+        expiry: DateTime<Utc>,
+    ) -> Self {
+        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let server_key = ecdsa::VerifyingKey::from(&client_key);
+        Self {
+            client_id: client_id.into(),
+            client_key,
+            server_key,
+            access_token: Some(OAuth2AccessToken {
+                client_secret: client_secret.into(),
+                expiry,
+            }),
+        }
+    }
+
+    #[must_use]
+    pub fn get_client_key_pem(&self) -> String {
+        self.client_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .unwrap()
+            .as_str()
+            .to_owned()
+    }
+
+    #[must_use]
+    pub fn get_server_key_pem(&self) -> String {
+        self.server_key.to_public_key_pem(LineEnding::LF).unwrap()
     }
 }

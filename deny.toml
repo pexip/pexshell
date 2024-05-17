@@ -19,6 +19,8 @@ skip = [
     { name = "syn", version = "2.0.10" },
     { name = "bitflags", version = "1.3.2" },
     { name = "bitflags", version = "2.3.3" },
+    { name = "base64", version = "0.21.7" },
+    { name = "base64", version = "0.22.1" },
 ]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [

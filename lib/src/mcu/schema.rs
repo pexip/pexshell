@@ -261,13 +261,20 @@ pub async fn read_all_schemas(
     Ok(all_schemas)
 }
 
-pub async fn cache_schemas(api_client: &ApiClient, cache_dir: &Path) -> anyhow::Result<()> {
+pub async fn cache_schemas<'auth>(
+    api_client: &ApiClient<'auth>,
+    cache_dir: &Path,
+) -> anyhow::Result<()> {
     join_all_results(Api::iter().map(|api| cache_api(api_client, cache_dir, api))).await?;
 
     Ok(())
 }
 
-async fn cache_api(api_client: &ApiClient, cache_dir: &Path, api: Api) -> anyhow::Result<()> {
+async fn cache_api<'auth>(
+    api_client: &ApiClient<'auth>,
+    cache_dir: &Path,
+    api: Api,
+) -> anyhow::Result<()> {
     let root_request = ApiRequest::ApiSchema { api };
     let json = api_client
         .send(root_request)
@@ -287,8 +294,8 @@ async fn cache_api(api_client: &ApiClient, cache_dir: &Path, api: Api) -> anyhow
     Ok(())
 }
 
-async fn cache_schema(
-    api_client: &ApiClient,
+async fn cache_schema<'auth>(
+    api_client: &ApiClient<'auth>,
     cache_dir: &Path,
     api: Api,
     endpoint: &str,
@@ -319,7 +326,10 @@ mod tests {
     use serde_json::json;
     use test_case::test_case;
 
-    use crate::{mcu::ApiClient, util::SensitiveString};
+    use crate::{
+        mcu::{auth::BasicAuth, ApiClient},
+        util::SensitiveString,
+    };
     use test_helpers::{get_test_context, has_credentials};
 
     const USERNAME: &str = "test";
@@ -391,12 +401,14 @@ mod tests {
         let api_client = ApiClient::new_for_testing(
             http_client,
             String::from(server.url("").to_string().trim_end_matches('/')),
-            String::from(USERNAME),
-            SensitiveString::from(PASSWORD),
+            BasicAuth::new(String::from(USERNAME), SensitiveString::from(PASSWORD)),
         );
 
         // Act
-        test_context
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
             .block_on(cache_api(&api_client, &PathBuf::from(&cache_path), api))
             .unwrap();
 
@@ -471,12 +483,14 @@ mod tests {
         let api_client = ApiClient::new_for_testing(
             http_client,
             String::from(server.url("").to_string().trim_end_matches('/')),
-            String::from(USERNAME),
-            SensitiveString::from(PASSWORD),
+            BasicAuth::new(String::from(USERNAME), SensitiveString::from(PASSWORD)),
         );
 
         // Act
-        test_context
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
             .block_on(cache_schema(
                 &api_client,
                 &PathBuf::from(&cache_path),

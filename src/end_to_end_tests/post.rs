@@ -19,13 +19,13 @@ use crate::{
     test_util::TestContextExtensions,
 };
 
-#[test]
-fn post_conference_config() {
+#[tokio::test]
+async fn post_conference_config() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
 
     server.expect(
@@ -40,36 +40,36 @@ fn post_conference_config() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &[
-                "pexshell",
-                "configuration",
-                "conference",
-                "post",
-                "--name",
-                "post_test_conf",
-            ]
-            .map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &[
+            "pexshell",
+            "configuration",
+            "conference",
+            "post",
+            "--name",
+            "post_test_conf",
+        ]
+        .map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let output = test_context.take_stdout();
     assert_eq!(&output, "/api/admin/configuration/v1/conference/54/\n");
 }
 
-#[test]
-fn post_conference_lock_command() {
+#[tokio::test]
+async fn post_conference_lock_command() {
     // Arrange
     let test_context = get_test_context();
     let server = Server::run();
 
-    configure_config_test_user(&test_context, &server);
+    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_command_conference_lock_only(&test_context);
 
     server.expect(
@@ -83,23 +83,23 @@ fn post_conference_lock_command() {
     );
 
     // Act
-    test_context
-        .block_on(crate::run_with(
-            &[
-                "pexshell",
-                "command",
-                "conference",
-                "lock",
-                "--conference_id",
-                "22ec87ef-92e8-4100-a8be-d12da654f6c3",
-            ]
-            .map(String::from),
-            HashMap::default(),
-            &test_context.get_directories(),
-            test_context.get_stdout_wrapper(),
-            test_context.get_stderr_wrapper(),
-        ))
-        .unwrap();
+    crate::run_with(
+        &[
+            "pexshell",
+            "command",
+            "conference",
+            "lock",
+            "--conference_id",
+            "22ec87ef-92e8-4100-a8be-d12da654f6c3",
+        ]
+        .map(String::from),
+        HashMap::default(),
+        &test_context.get_directories(),
+        test_context.get_stdout_wrapper(),
+        test_context.get_stderr_wrapper(),
+    )
+    .await
+    .unwrap();
 
     // Assert
     let output = test_context.take_stdout();
