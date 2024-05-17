@@ -416,8 +416,8 @@ impl Manager {
 
             match (env_address, env_username) {
                 (Some(env_address), Some(env_username)) => {
-                    self.config.users.iter().position(|u| u.address == *env_address && match u.credentials {
-                        Credentials::Basic(ref c) => c.username == *env_username,
+                    self.config.users.iter().position(|u| u.address == *env_address && match &u.credentials {
+                        Credentials::Basic(c) => c.username == *env_username,
                         Credentials::OAuth2(_) => false,
                     })
                     .map_or_else(|| Err(error::UserFriendly::new(format!(
@@ -579,11 +579,11 @@ impl Provider for Manager {
             .iter_mut()
             .find(|u| u.unique_id() == user.unique_id())
         {
-            match user.credentials {
+            match &mut user.credentials {
                 Credentials::Basic(_) => Err(error::UserFriendly::new(
                     "cannot update oauth2 token: expected oauth2 user, but found basic auth user",
                 )),
-                Credentials::OAuth2(ref mut credentials) => {
+                Credentials::OAuth2(credentials) => {
                     if credentials.private_key.is_some() {
                         // store token in plaintext
                         credentials.token = Some(token);
@@ -612,13 +612,13 @@ impl Provider for Manager {
                 }
             }
         } else {
-            match user.credentials {
-                Credentials::OAuth2(ref mut credentials) if credentials.private_key.is_some() => {
+            match &mut user.credentials {
+                Credentials::OAuth2(credentials) if credentials.private_key.is_some() => {
                     credentials.token = Some(token);
                     Ok(())
                 }
                 _ => Err(error::UserFriendly::new(
-                    "cannot update oauth2 token: user not found",
+                    "cannot update oauth2 token: expected oauth2 user, but found basic auth user",
                 )),
             }
         }
@@ -637,8 +637,8 @@ impl Configurer for Manager {
         mut user: User,
         store_secrets_in_plaintext: bool,
     ) -> Result<(), error::UserFriendly> {
-        match user.credentials {
-            Credentials::Basic(ref mut credentials) => {
+        match &mut user.credentials {
+            Credentials::Basic(credentials) => {
                 assert!(credentials.password.is_some(), "No password specified!");
                 if !store_secrets_in_plaintext {
                     self.keyring
@@ -655,7 +655,7 @@ impl Configurer for Manager {
                         })?;
                 }
             }
-            Credentials::OAuth2(ref mut credentials) => {
+            Credentials::OAuth2(credentials) => {
                 assert!(
                     credentials.private_key.is_some(),
                     "No private key specified!"
@@ -674,7 +674,7 @@ impl Configurer for Manager {
                             ))
                         })?;
 
-                    if let Some(ref token) = credentials.token {
+                    if let Some(token) = &credentials.token {
                         self.keyring
                             .lock()
                             .save(
@@ -925,20 +925,20 @@ mod tests {
 
         assert_eq!(config.users[0].address, "test_address.test.com");
         assert!(matches!(
-            config.users[0].credentials,
+            &config.users[0].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "admin" && password.secret() == "some_admin_password"
         ));
         assert!(!config.users[0].current_user);
 
         assert_eq!(config.users[1].address, "test_address.testing.com");
         assert!(matches!(
-            config.users[1].credentials,
+            &config.users[1].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "a_user" && password.secret() == "another_password"
         ));
         assert!(config.users[1].current_user);
@@ -1262,28 +1262,28 @@ current_user = true
         assert_eq!(users.len(), 3);
         assert_eq!(users[0].address, "test_address.test.com");
         assert!(matches!(
-            users[0].credentials,
+            &users[0].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "admin" && password.secret() == "some_admin_password"
         ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
         assert!(matches!(
-            users[1].credentials,
+            &users[1].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
+                username,
                 password: None
             }) if username == "a_user"
         ));
         assert!(users[1].current_user);
         assert_eq!(users[2].address, "new_address.testing.com");
         assert!(matches!(
-            users[2].credentials,
+            &users[2].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "a_new_user" && password.secret() == "some_new_password"
         ));
         assert!(!users[2].current_user);
@@ -1367,27 +1367,27 @@ current_user = true
         assert_eq!(users.len(), 3);
         assert_eq!(users[0].address, "test_address.test.com");
         assert!(matches!(
-            users[0].credentials,
+            &users[0].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password),
+                username,
+                password: Some(password),
             }) if username == "admin" && password.secret() == "some_admin_password"
         ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
         assert!(matches!(
-            users[1].credentials,
+            &users[1].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
+                username,
                 password: None,
             }) if username == "a_user"
         ));
         assert!(users[1].current_user);
         assert_eq!(users[2].address, "new_address.testing.com");
         assert!(matches!(
-            users[2].credentials,
+            &users[2].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
+                username,
                 password: None,
             }) if username == "a_new_user"
         ));
@@ -1474,18 +1474,18 @@ current_user = true
         assert_eq!(users.len(), 2);
         assert_eq!(users[0].address, "test_address.test.com");
         assert!(matches!(
-            users[0].credentials,
+            &users[0].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password),
+                username,
+                password: Some(password),
             }) if username == "admin" && password.secret() == "some_admin_password"
         ));
         assert!(!users[0].current_user);
         assert_eq!(users[1].address, "test_address.testing.com");
         assert!(matches!(
-            users[1].credentials,
+            &users[1].credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
+                username,
                 password: None,
             }) if username == "a_user"
         ));
@@ -1631,10 +1631,10 @@ current_user = true
         let user = result.unwrap();
         assert_eq!(user.address, "some.address");
         assert!(matches!(
-            user.credentials,
+            &user.credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "some_username" && password.secret() == "super_secret_password"
         ));
     }
@@ -1762,10 +1762,10 @@ current_user = true
         let user = result.unwrap();
         assert_eq!(user.address, "test_address.test.com");
         assert!(matches!(
-            user.credentials,
+            &user.credentials,
             Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
+                username,
+                password: Some(password)
             }) if username == "admin" && password.secret() == "some_admin_password"
         ));
     }
