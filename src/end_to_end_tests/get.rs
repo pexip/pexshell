@@ -124,7 +124,7 @@ async fn get_conference_config_oauth2() {
                         .and_then(Value::as_i64)
                         .map_or(false, |iat| {
                             let now = Utc::now().timestamp();
-                            iat <= now && now <= iat + 60
+                            now - 60 <= iat && iat <= now
                         })
                     && jwt
                         .claims
@@ -132,7 +132,7 @@ async fn get_conference_config_oauth2() {
                         .and_then(Value::as_i64)
                         .map_or(false, |exp| {
                             let now = Utc::now().timestamp();
-                            exp <= now + 3600 && now + 3600 <= exp + 60
+                            now + 3540 <= exp && exp <= now + 3600
                         })
                     && jwt
                         .claims

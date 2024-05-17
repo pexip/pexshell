@@ -496,8 +496,8 @@ impl Provider for Manager {
     }
 
     fn get_credentials_for_user(&self, user: &User) -> Result<Credentials, error::UserFriendly> {
-        match user.credentials {
-            Credentials::Basic(ref credentials) => {
+        match &user.credentials {
+            Credentials::Basic(credentials) => {
                 let password = credentials.password.clone().map_or_else(
                     || {
                         self.keyring
@@ -516,7 +516,7 @@ impl Provider for Manager {
                     password: Some(password),
                 }))
             }
-            Credentials::OAuth2(ref credentials) => {
+            Credentials::OAuth2(credentials) => {
                 let private_key = credentials.private_key.clone().map_or_else(
                     || {
                         self.keyring
