@@ -188,11 +188,11 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
             new_token.expires_at
         );
 
-        *token = Some(new_token);
+        *token = Some(new_token.clone());
 
-        (self.token_callback)(token.as_ref().unwrap());
+        (self.token_callback)(&new_token);
 
-        Ok(request.bearer_auth(token.as_ref().unwrap().token.secret()))
+        Ok(request.bearer_auth(new_token.token.secret()))
     }
 }
 
