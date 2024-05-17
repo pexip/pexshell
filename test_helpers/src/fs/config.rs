@@ -137,22 +137,6 @@ pub struct OAuth2Credentials {
 }
 
 impl OAuth2Credentials {
-    #[must_use]
-    pub fn get_client_key_pem(&self) -> String {
-        self.client_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .unwrap()
-            .as_str()
-            .to_owned()
-    }
-
-    #[must_use]
-    pub fn get_server_key_pem(&self) -> String {
-        self.server_key.to_public_key_pem(LineEnding::LF).unwrap()
-    }
-}
-
-impl OAuth2Credentials {
     pub fn new(client_id: impl Into<String>) -> Self {
         let client_key = ecdsa::SigningKey::random(&mut OsRng);
         let server_key = ecdsa::VerifyingKey::from(&client_key);
@@ -180,5 +164,19 @@ impl OAuth2Credentials {
                 expiry,
             }),
         }
+    }
+
+    #[must_use]
+    pub fn get_client_key_pem(&self) -> String {
+        self.client_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .unwrap()
+            .as_str()
+            .to_owned()
+    }
+
+    #[must_use]
+    pub fn get_server_key_pem(&self) -> String {
+        self.server_key.to_public_key_pem(LineEnding::LF).unwrap()
     }
 }
