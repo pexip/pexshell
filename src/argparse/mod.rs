@@ -10,14 +10,14 @@ use crate::{
     cli::{self},
     VERSION,
 };
-use clap::{Arg, ArgAction, Command};
+use clap::{value_parser, Arg, ArgAction, Command};
 
 use lib::mcu::{
     schema::{self},
     Api,
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 pub struct CommandGen(pub HashMap<Api, HashMap<String, schema::Endpoint>>);
 
@@ -43,7 +43,27 @@ impl CommandGen {
                 Arg::new("log")
                     .long("log")
                     .help("Output application logs to a file")
+                    .value_parser(value_parser!(PathBuf))
                     .action(ArgAction::Set),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_log_flag() {
+        let matches = CommandGen(HashMap::new()).command().get_matches_from(vec![
+            "pexshell",
+            "--log",
+            "/path/to/file.log",
+            "cache",
+        ]);
+        assert_eq!(
+            matches.get_one::<PathBuf>("log"),
+            Some(&PathBuf::from("/path/to/file.log"))
+        );
     }
 }
