@@ -152,6 +152,7 @@ impl log::Log for SimpleLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use googletest::prelude::*;
     use log::Log;
     use test_case::test_case;
     use test_helpers::get_test_context;
@@ -178,15 +179,15 @@ mod tests {
 
         let log = std::fs::read_to_string(&log_path).unwrap();
         let mut logs = log.lines();
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- First test log line"
+            eq("  pexshell --- First test log line"),
         );
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- Second line"
+            eq("  pexshell --- Second line")
         );
-        assert!(logs.next().is_none());
+        assert_that!(logs.next(), none());
         std::fs::remove_file(&log_path).unwrap();
     }
 
@@ -248,12 +249,12 @@ mod tests {
         let log = std::fs::read_to_string(&log_path).unwrap();
         let mut logs = log.lines();
         for &expected_log in expected_logs {
-            assert_eq!(
-                logs.next().unwrap().split_once("Z  ").unwrap().1,
-                expected_log
+            assert_that!(
+                logs.next().unwrap().split_once("Z  "),
+                some((anything(), eq(expected_log)))
             );
         }
-        assert!(logs.next().is_none());
+        assert_that!(logs.next(), none());
         std::fs::remove_file(&log_path).unwrap();
     }
 
@@ -286,15 +287,15 @@ mod tests {
 
         let log = std::fs::read_to_string(&log_path).unwrap();
         let mut logs = log.lines();
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- First test log line"
+            eq("  pexshell --- First test log line")
         );
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- Second line"
+            eq("  pexshell --- Second line")
         );
-        assert!(logs.next().is_none());
+        assert_that!(logs.next(), none());
         std::fs::remove_file(&log_path).unwrap();
     }
 
@@ -328,28 +329,30 @@ mod tests {
 
         let log = std::fs::read_to_string(&log_path_1).unwrap();
         let mut logs = log.lines();
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- First log file"
+            eq("  pexshell --- First log file")
         );
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z --- ").unwrap().1,
-            format!("Log file changed - subsequent logs will be written to: {log_path_2:?}")
-                .as_str()
+            eq(
+                format!("Log file changed - subsequent logs will be written to: {log_path_2:?}")
+                    .as_str()
+            )
         );
-        assert!(logs.next().is_none());
+        assert_that!(logs.next(), none());
 
         let log = std::fs::read_to_string(&log_path_2).unwrap();
         let mut logs = log.lines();
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- First test log line"
+            eq("  pexshell --- First test log line")
         );
-        assert_eq!(
+        assert_that!(
             logs.next().unwrap().split_once("Z  INFO ").unwrap().1,
-            "  pexshell --- Second line"
+            eq("  pexshell --- Second line")
         );
-        assert!(logs.next().is_none());
+        assert_that!(logs.next(), none());
         std::fs::remove_file(&log_path_1).unwrap();
         std::fs::remove_file(&log_path_2).unwrap();
     }
@@ -385,7 +388,7 @@ mod tests {
             .build();
 
         // Act
-        assert_eq!(logger.enabled(record.metadata()), should_log);
+        assert_that!(logger.enabled(record.metadata()), eq(should_log));
         logger.log(&record);
 
         // Assert
@@ -393,12 +396,14 @@ mod tests {
         let log_lines: Vec<&str> = log.lines().collect();
 
         if should_log {
-            assert_eq!(log_lines.len(), 1);
-            assert!(
-                log_lines[0].ends_with(&format!("Z  {level:<5}  {module_path} --- first record"))
+            assert_that!(
+                log_lines,
+                elements_are![ends_with(
+                    format!("Z  {level:<5}  {module_path} --- first record").as_str()
+                )]
             );
         } else {
-            assert_eq!(log_lines.len(), 0);
+            assert_that!(log_lines, empty());
         }
     }
 
@@ -420,8 +425,10 @@ mod tests {
         );
         let log = std::fs::read_to_string(log_file_path).unwrap();
         let log_lines: Vec<&str> = log.lines().collect();
-        assert_eq!(log_lines.len(), 1);
-        assert!(log_lines[0].ends_with("Z  ERROR   --- testing"));
+        assert_that!(
+            log_lines,
+            elements_are![ends_with("Z  ERROR   --- testing")]
+        );
     }
 
     #[test]
@@ -443,7 +450,9 @@ mod tests {
         );
         let log = std::fs::read_to_string(log_file_path).unwrap();
         let log_lines: Vec<&str> = log.lines().collect();
-        assert_eq!(log_lines.len(), 1);
-        assert!(log_lines[0].ends_with("Z  ERROR   --- testing"));
+        assert_that!(
+            log_lines,
+            elements_are![ends_with("Z  ERROR   --- testing")]
+        );
     }
 }

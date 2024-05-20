@@ -23,6 +23,8 @@ mod tests {
         task::Poll,
     };
 
+    use core::result::Result;
+    use googletest::prelude::*;
     use parking_lot::Mutex;
     use test_helpers::future::MockFuture;
 
@@ -41,7 +43,7 @@ mod tests {
         let result = runtime.block_on(join_all_results(results.iter().cloned()));
 
         // Assert
-        assert_eq!(result, Ok(vec![1, 2, 3]));
+        assert_that!(result, ok(container_eq([1, 2, 3])));
     }
 
     #[test]
@@ -74,7 +76,7 @@ mod tests {
         let result = runtime.block_on(join_all_results(results.into_iter()));
 
         // Assert
-        assert_eq!(result, Err(()));
-        assert_eq!(*call_order.lock(), vec![0, 1, 2]);
+        assert_that!(result, err(eq(())));
+        assert_that!(*call_order.lock(), container_eq([0, 1, 2]));
     }
 }

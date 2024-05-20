@@ -29,12 +29,15 @@ impl UserFriendly {
 
 #[cfg(test)]
 mod tests {
+    use googletest::prelude::*;
+    use test_helpers::googletest::debugs_as;
+
     use super::*;
 
     #[test]
     fn test_user_friendly_error() {
         let error = UserFriendly::new("Some error message.");
-        assert_eq!(format!("{error}").as_str(), "Some error message.");
-        assert_eq!(format!("{error:?}").as_str(), "Some error message.");
+        assert_that!(error, displays_as(eq("Some error message.")));
+        assert_that!(error, debugs_as(eq("Some error message.")));
     }
 }

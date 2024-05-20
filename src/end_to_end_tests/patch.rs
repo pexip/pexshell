@@ -2,9 +2,10 @@
 
 use std::collections::HashMap;
 
+use googletest::prelude::*;
 use httptest::{
     all_of,
-    matchers::{eq, json_decoded, request},
+    matchers::{eq as heq, json_decoded, request},
     responders::status_code,
     Expectation, Server,
 };
@@ -30,7 +31,7 @@ async fn patch_conference_config() {
     server.expect(
         Expectation::matching(all_of![
             request::method_path("PATCH", "/api/admin/configuration/v1/conference/89/",),
-            request::body(json_decoded(eq(json!({"name": "patch_test_conf"})))),
+            request::body(json_decoded(heq(json!({"name": "patch_test_conf"})))),
         ])
         .respond_with(status_code(200)),
     );
@@ -57,5 +58,5 @@ async fn patch_conference_config() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 }

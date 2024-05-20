@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use googletest::prelude::*;
 use p256::pkcs8::*;
 use p256::{ecdsa, pkcs8::LineEnding};
 use rand::rngs::OsRng;
@@ -112,14 +113,12 @@ impl Configurer {
         let actual =
             std::fs::read_to_string(&self.config_path).expect("Failed to read config file");
         let actual: Value = toml::from_str(&actual).expect("Failed to parse config file");
-        assert_eq!(
-            expected,
-            actual,
-            "Config file contents incorrect -
-            \texpected: {:?}
-            \t  actual: {:?}",
+        assert_that!(
+            &expected,
+            eq(&actual),
+            "Config file contents incorrect - expected: {:?}, actual: {:?}",
             toml::to_string(&expected).unwrap(),
-            toml::to_string(&actual).unwrap()
+            toml::to_string(&actual).unwrap(),
         );
     }
 }

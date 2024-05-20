@@ -230,6 +230,7 @@ impl<'a> PexShell<'a> {
 
 #[cfg(test)]
 mod tests {
+    use googletest::prelude::*;
     use std::collections::HashMap;
 
     use crate::{cli::Console, pexshell::read_config, test_util::TestContextExtensions};
@@ -256,8 +257,8 @@ mod tests {
             .build();
 
         // Act & Assert
-        assert!(logger.enabled(record_1.metadata()));
-        assert!(!logger.enabled(record_2.metadata()));
+        assert_that!(logger.enabled(record_1.metadata()), eq(true));
+        assert_that!(logger.enabled(record_2.metadata()), eq(false));
     }
 
     #[test]
@@ -272,18 +273,18 @@ mod tests {
             false,
             test_context.get_stderr_wrapper(),
         );
-        assert!(!config_path.exists());
+        assert_that!(config_path.exists(), eq(false));
 
         // Act
         let config = read_config(&dirs, &HashMap::default(), &mut console).unwrap();
         drop(config);
 
         // Assert
-        assert!(config_path.exists());
+        assert_that!(config_path.exists(), eq(true));
         let log_file_path = String::from(dirs.tmp_dir.join("pexshell.log").to_str().unwrap());
-        assert_eq!(
-            std::fs::read_to_string(&config_path).unwrap(),
-            format!(
+        assert_that!(
+            std::fs::read_to_string(&config_path),
+            ok(eq(format!(
                 r#"[log]
 file = {file_path}
 "#,
@@ -292,7 +293,7 @@ file = {file_path}
                 } else {
                     format!("\"{log_file_path}\"")
                 }
-            )
+            )))
         );
 
         std::fs::remove_file(config_path).unwrap();

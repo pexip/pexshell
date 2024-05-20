@@ -59,6 +59,18 @@ impl<'de> Deserialize<'de> for SensitiveString {
     }
 }
 
+impl AsRef<Self> for SensitiveString {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl AsMut<Self> for SensitiveString {
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
 struct SecureStringVisitor;
 
 impl<'de> Visitor<'de> for SecureStringVisitor {
@@ -87,6 +99,7 @@ impl<'de> Visitor<'de> for SecureStringVisitor {
 
 #[cfg(test)]
 mod tests {
+    use googletest::prelude::*;
     use serde::de::{Error, Visitor};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -101,10 +114,10 @@ mod tests {
     #[test]
     fn basic_test() {
         let sensitive = SensitiveString::from(TEST_DATA);
-        assert_eq!(sensitive.to_string(), "*");
-        assert_eq!(format!("{}", &sensitive), "*");
-        assert_eq!(format!("{:?}", &sensitive), r#""*""#);
-        assert_eq!(sensitive.secret(), String::from(TEST_DATA));
+        assert_that!(sensitive.to_string(), eq("*"));
+        assert_that!(sensitive, displays_as(eq("*")));
+        assert_that!(format!("{:?}", &sensitive), eq(r#""*""#));
+        assert_that!(sensitive.secret(), eq(TEST_DATA));
     }
 
     #[derive(Serialize, Deserialize)]
@@ -145,20 +158,20 @@ mod tests {
         };
 
         // test visitor
-        assert_eq!(format!("{FormatExpecting}"), "a string");
+        assert_that!(format!("{FormatExpecting}"), eq("a string"));
         let v_str: SensitiveString = SecureStringVisitor
             .visit_str::<DeError>("Testing...")
             .unwrap();
-        assert_eq!(v_str.secret(), "Testing...");
+        assert_that!(v_str.secret(), eq("Testing..."));
         let v_str: SensitiveString = SecureStringVisitor
             .visit_string::<DeError>(String::from("Testing."))
             .unwrap();
-        assert_eq!(v_str.secret(), "Testing.");
+        assert_that!(v_str.secret(), eq("Testing."));
 
         // test with serde
-        assert_eq!(
+        assert_that!(
             serde_json::to_value(sensitive_wrapper).unwrap(),
-            json!({ "payload": TEST_DATA })
+            eq(json!({ "payload": TEST_DATA }))
         );
     }
 
@@ -166,8 +179,8 @@ mod tests {
     fn test_deserialize() {
         let sensitive_wrapper: TestSerialise =
             serde_json::from_value(json!({ "payload": TEST_DATA })).unwrap();
-        assert_eq!(sensitive_wrapper.payload.to_string(), "*");
-        assert_eq!(sensitive_wrapper.payload.secret(), TEST_DATA);
+        assert_that!(sensitive_wrapper.payload.to_string(), eq("*"));
+        assert_that!(sensitive_wrapper.payload.secret(), eq(TEST_DATA));
     }
 
     #[test]
@@ -175,44 +188,44 @@ mod tests {
     fn test_clone() {
         let sensitive_string = SensitiveString::from("Testing");
         let dup = sensitive_string.clone();
-        assert_eq!(dup.secret(), "Testing");
+        assert_that!(dup.secret(), eq("Testing"));
     }
 
     #[test]
     fn test_from_str() {
         let sensitive_string = SensitiveString::from("Test");
-        assert_eq!(sensitive_string.secret(), "Test");
+        assert_that!(sensitive_string.secret(), eq("Test"));
     }
 
     #[test]
     fn test_from_string() {
         let sensitive_string = SensitiveString::from(String::from("Test"));
-        assert_eq!(sensitive_string.secret(), "Test");
+        assert_that!(sensitive_string.secret(), eq("Test"));
     }
 
     #[test]
     fn test_to_string() {
         let sensitive_string = SensitiveString::from("Testing");
-        assert_eq!(sensitive_string.to_string(), "*");
+        assert_that!(sensitive_string.to_string(), eq("*"));
     }
 
     #[test]
     fn test_display() {
         let sensitive_string = SensitiveString::from("Test");
-        assert_eq!(format!("{sensitive_string}"), "*");
+        assert_that!(sensitive_string, displays_as(eq("*")));
     }
 
     #[test]
     fn test_debug() {
         let sensitive_string = SensitiveString::from("Test");
-        assert_eq!(format!("{sensitive_string:?}"), r#""*""#);
+        assert_that!(format!("{sensitive_string:?}"), eq(r#""*""#));
     }
 
     #[test]
     fn test_zeroize() {
         let mut sensitive_string = SensitiveString::from("Test");
-        assert_eq!(sensitive_string.secret(), "Test");
+        assert_that!(sensitive_string.secret(), eq("Test"));
         sensitive_string.zeroize();
-        assert_eq!(sensitive_string.secret(), "");
+        assert_that!(sensitive_string.secret(), eq(""));
     }
 }

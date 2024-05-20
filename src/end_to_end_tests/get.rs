@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
+use googletest::prelude::*;
 use jsonwebtoken::{DecodingKey, Validation};
 use log::info;
 use serde_json::{json, Value};
@@ -55,12 +56,12 @@ async fn get_conference_config() {
     logger.verify();
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(
+    assert_that!(
         output,
-        json!({
+        eq(json!({
             "id": 5,
             "name": "some_test_conference",
-        })
+        }))
     );
 }
 
@@ -175,11 +176,11 @@ async fn get_conference_config_oauth2() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(
+    assert_that!(
         output,
-        json!({
+        eq(json!({
             "id": 5,
             "name": "some_test_conference",
-        })
+        }))
     );
 }

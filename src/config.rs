@@ -803,10 +803,11 @@ mod credentials {
 
 #[cfg(test)]
 mod tests {
-    use mockall::predicate::{eq, function};
+    use googletest::prelude::*;
+    use mockall::predicate as mp;
     use test_helpers::get_test_context;
 
-    use crate::test_util::TestContextExtensions;
+    use crate::test_util::{sensitive_string, TestContextExtensions};
 
     use super::*;
     use chrono::TimeZone;
@@ -840,8 +841,8 @@ mod tests {
 
         // Assert
         let config = result.unwrap().config;
-        assert!(config.users.is_empty());
-        assert!(config.log.is_none());
+        assert_that!(config.users, empty());
+        assert_that!(config.log, none());
     }
 
     #[test]
@@ -871,10 +872,10 @@ mod tests {
         );
 
         // Assert
-        assert!(config.is_err());
+        assert_that!(config.as_ref().err(), some(anything()));
         let e = config.map(|m| m.config).unwrap_err();
 
-        assert_eq!(format!("{e}").as_str(), "config is invalid");
+        assert_that!(e, displays_as(eq("config is invalid")));
     }
 
     #[test]
@@ -921,39 +922,35 @@ mod tests {
         .config;
 
         // Assert
-        assert_eq!(config.users.len(), 2);
-
-        assert_eq!(config.users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &config.users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!config.users[0].current_user);
-
-        assert_eq!(config.users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &config.users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "a_user" && password.secret() == "another_password"
-        ));
-        assert!(config.users[1].current_user);
-        assert_eq!(
-            config.users[1].last_used,
-            Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())
-        );
-
-        assert_eq!(
-            config.log.as_ref().and_then(|l| l.file.as_deref()),
-            Some(Path::new("/path/to/some/pexshell.log"))
-        );
-        assert_eq!(
-            config.log.as_ref().and_then(|l| l.level.as_deref()),
-            Some("debug")
+        assert_that!(
+            config,
+            matches_pattern!(Config {
+                log: some(pat!(Logging {
+                    file: some(eq(Path::new("/path/to/some/pexshell.log"))),
+                    level: some(eq("debug")),
+                    stderr: none(),
+                })),
+                users: elements_are![
+                    pat!(User {
+                        address: eq("test_address.test.com"),
+                        credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                            username: eq("admin"),
+                            password: some(sensitive_string(eq("some_admin_password"))),
+                        }))),
+                        current_user: eq(false),
+                        last_used: none(),
+                    }),
+                    pat!(User {
+                        address: eq("test_address.testing.com"),
+                        credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                            username: eq("a_user"),
+                            password: some(sensitive_string(eq("another_password"))),
+                        }))),
+                        current_user: eq(true),
+                        last_used: some(eq(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())),
+                    }),
+                ],
+            })
         );
     }
 
@@ -1015,9 +1012,9 @@ mod tests {
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
-        assert_eq!(
+        assert_that!(
             written_config,
-            r#"[log]
+            eq(r#"[log]
 file = "/path/to/some/pexshell.log"
 level = "debug"
 
@@ -1031,7 +1028,7 @@ address = "test_address.testing.com"
 username = "a_user"
 current_user = true
 last_used = 1192778584
-"#
+"#)
         );
     }
 
@@ -1070,7 +1067,7 @@ last_used = 1192778584
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
-        assert_eq!(written_config, "");
+        assert_that!(written_config, eq(""));
     }
 
     #[test]
@@ -1116,7 +1113,7 @@ last_used = 1192778584
         let acquired = test_lock.try_lock().unwrap();
 
         // Assert
-        assert!(!acquired);
+        assert_that!(acquired, eq(false));
     }
 
     #[test]
@@ -1179,9 +1176,9 @@ last_used = 1192778584
 
         // Assert
         let written_config = std::fs::read_to_string(&config_path).unwrap();
-        assert_eq!(
+        assert_that!(
             written_config,
-            r#"[log]
+            eq(r#"[log]
 file = "/path/to/some/pexshell.log"
 level = "debug"
 
@@ -1189,7 +1186,7 @@ level = "debug"
 address = "test_address.testing.com"
 username = "a_user"
 current_user = true
-"#
+"#)
         );
     }
 
@@ -1259,34 +1256,38 @@ current_user = true
 
         // Assert
         let users = mgr.get_users();
-        assert_eq!(users.len(), 3);
-        assert_eq!(users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!users[0].current_user);
-        assert_eq!(users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None
-            }) if username == "a_user"
-        ));
-        assert!(users[1].current_user);
-        assert_eq!(users[2].address, "new_address.testing.com");
-        assert!(matches!(
-            &users[2].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "a_new_user" && password.secret() == "some_new_password"
-        ));
-        assert!(!users[2].current_user);
+        assert_that!(
+            users.to_vec(),
+            elements_are![
+                pat!(User {
+                    address: eq("test_address.test.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("test_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_user"),
+                        password: none(),
+                    }))),
+                    current_user: eq(true),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("new_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_new_user"),
+                        password: some(sensitive_string(eq("some_new_password"))),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+            ]
+        );
     }
 
     #[test]
@@ -1327,9 +1328,9 @@ current_user = true
         keyring
             .expect_save()
             .with(
-                eq("new_address.testing.com"),
-                eq("a_new_user"),
-                function(|s: &SensitiveString| s.secret() == "some_new_password"),
+                mp::eq("new_address.testing.com"),
+                mp::eq("a_new_user"),
+                mp::function(|s: &SensitiveString| s.secret() == "some_new_password"),
             )
             .once()
             .return_once(|_, _, _| Ok(()));
@@ -1364,36 +1365,41 @@ current_user = true
 
         // Assert
         let users = mgr.get_users();
-        assert_eq!(users.len(), 3);
-        assert_eq!(users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password),
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!users[0].current_user);
-        assert_eq!(users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None,
-            }) if username == "a_user"
-        ));
-        assert!(users[1].current_user);
-        assert_eq!(users[2].address, "new_address.testing.com");
-        assert!(matches!(
-            &users[2].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None,
-            }) if username == "a_new_user"
-        ));
-        assert!(!users[2].current_user);
+        assert_that!(
+            users.to_vec(),
+            elements_are![
+                pat!(User {
+                    address: eq("test_address.test.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("test_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_user"),
+                        password: none(),
+                    }))),
+                    current_user: eq(true),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("new_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_new_user"),
+                        password: none(),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+            ]
+        );
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn test_add_oauth2_user_with_credential_store_no_token() {
         // Arrange
@@ -1432,9 +1438,9 @@ current_user = true
         keyring
             .expect_save()
             .with(
-                eq("new_address.testing.com"),
-                eq("a_new_oauth2_user-privkey"),
-                function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
+                mp::eq("new_address.testing.com"),
+                mp::eq("a_new_oauth2_user-privkey"),
+                mp::function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
             )
             .once()
             .return_once(|_, _, _| Ok(()));
@@ -1470,35 +1476,50 @@ current_user = true
 
         // Assert
         let users = mgr.get_users();
-        assert_eq!(users.len(), 3);
-        assert_eq!(users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password),
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!users[0].current_user);
-        assert_eq!(users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None,
-            }) if username == "a_user"
-        ));
-        assert!(users[1].current_user);
-        assert_eq!(users[2].address, "new_address.testing.com");
-        assert!(matches!(
-            &users[2].credentials,
-            Credentials::OAuth2(OAuth2Credentials {
-                client_id,
-                private_key: None,
-                token: None,
-            }) if client_id == "a_new_oauth2_user"
-        ));
-        assert!(!users[2].current_user);
+        assert_that!(users.len(), eq(3));
+        assert_that!(
+            users[0],
+            matches_pattern!(User {
+                address: eq("test_address.test.com"),
+                credentials: matches_pattern!(Credentials::Basic(matches_pattern!(
+                    BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }
+                ))),
+                current_user: eq(false),
+                last_used: none(),
+            })
+        );
+        assert_that!(
+            users[1],
+            matches_pattern!(User {
+                address: eq("test_address.testing.com"),
+                credentials: matches_pattern!(Credentials::Basic(matches_pattern!(
+                    BasicCredentials {
+                        username: eq("a_user"),
+                        password: none(),
+                    }
+                ))),
+                current_user: eq(true),
+                last_used: none(),
+            })
+        );
+        assert_that!(
+            users[2],
+            matches_pattern!(User {
+                address: eq("new_address.testing.com"),
+                credentials: matches_pattern!(Credentials::OAuth2(matches_pattern!(
+                    OAuth2Credentials {
+                        client_id: eq("a_new_oauth2_user"),
+                        private_key: none(),
+                        token: none(),
+                    }
+                ))),
+                current_user: eq(false),
+                last_used: none(),
+            })
+        );
     }
 
     #[allow(clippy::too_many_lines)]
@@ -1540,9 +1561,9 @@ current_user = true
         keyring
             .expect_save()
             .with(
-                eq("new_address.testing.com"),
-                eq("a_new_oauth2_user-privkey"),
-                function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
+                mp::eq("new_address.testing.com"),
+                mp::eq("a_new_oauth2_user-privkey"),
+                mp::function(|s: &SensitiveString| s.secret() == "some_new_private_key"),
             )
             .once()
             .return_once(|_, _, _| Ok(()));
@@ -1553,9 +1574,9 @@ current_user = true
         keyring
             .expect_save()
             .with(
-                eq("new_address.testing.com"),
-                eq("a_new_oauth2_user-token"),
-                function(move |s: &SensitiveString| {
+                mp::eq("new_address.testing.com"),
+                mp::eq("a_new_oauth2_user-token"),
+                mp::function(move |s: &SensitiveString| {
                     matches!(
                         serde_json::from_str(s.secret()),
                         Ok(OAuth2Token {
@@ -1606,36 +1627,39 @@ current_user = true
 
         // Assert
         let users = mgr.get_users();
-        assert_eq!(users.len(), 3);
-        assert_eq!(users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password),
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!users[0].current_user);
-        assert_eq!(users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None,
-            }) if username == "a_user"
-        ));
-        assert!(users[1].current_user);
-        assert_eq!(users[2].address, "new_address.testing.com");
-        dbg!(&users[2]);
-        assert!(matches!(
-            &users[2].credentials,
-            Credentials::OAuth2(OAuth2Credentials {
-                client_id,
-                private_key: None,
-                token: None,
-            }) if client_id == "a_new_oauth2_user"
-        ));
-        assert!(!users[2].current_user);
+        assert_that!(
+            users.to_vec(),
+            elements_are![
+                pat!(User {
+                    address: eq("test_address.test.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("test_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_user"),
+                        password: none(),
+                    }))),
+                    current_user: eq(true),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("new_address.testing.com"),
+                    credentials: pat!(Credentials::OAuth2(pat!(OAuth2Credentials {
+                        client_id: eq("a_new_oauth2_user"),
+                        private_key: none(),
+                        token: none(),
+                    }))),
+                    current_user: eq(false),
+                    last_used: some(eq(last_used)),
+                }),
+            ]
+        );
     }
 
     #[test]
@@ -1676,9 +1700,9 @@ current_user = true
         keyring
             .expect_save()
             .with(
-                eq("new_address.testing.com"),
-                eq("a_new_user"),
-                function(|s: &SensitiveString| s.secret() == "some_new_password"),
+                mp::eq("new_address.testing.com"),
+                mp::eq("a_new_user"),
+                mp::function(|s: &SensitiveString| s.secret() == "some_new_password"),
             )
             .once()
             .return_once(|_, _, _| Err(keyring::Error::NoEntry));
@@ -1712,28 +1736,32 @@ current_user = true
         let error = mgr.add_user(new_user, false).unwrap_err();
 
         // Assert
-        assert_eq!(error.to_string(), "could not save password to system credential store: No matching entry found in secure storage");
+        assert_that!(error, displays_as(eq("could not save password to system credential store: No matching entry found in secure storage")));
 
         let users = mgr.get_users();
-        assert_eq!(users.len(), 2);
-        assert_eq!(users[0].address, "test_address.test.com");
-        assert!(matches!(
-            &users[0].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password),
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
-        assert!(!users[0].current_user);
-        assert_eq!(users[1].address, "test_address.testing.com");
-        assert!(matches!(
-            &users[1].credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: None,
-            }) if username == "a_user"
-        ));
-        assert!(users[1].current_user);
+        assert_that!(
+            users.to_vec(),
+            elements_are![
+                pat!(User {
+                    address: eq("test_address.test.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }))),
+                    current_user: eq(false),
+                    last_used: none(),
+                }),
+                pat!(User {
+                    address: eq("test_address.testing.com"),
+                    credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                        username: eq("a_user"),
+                        password: none(),
+                    }))),
+                    current_user: eq(true),
+                    last_used: none(),
+                }),
+            ]
+        );
     }
 
     #[test]
@@ -1764,9 +1792,11 @@ current_user = true
         let result = mgr.get_current_user();
 
         // Assert
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "no user signed in - please sign into a management node with: pexshell login"
+        assert_that!(
+            result,
+            err(displays_as(eq(
+                "no user signed in - please sign into a management node with: pexshell login"
+            )))
         );
     }
 
@@ -1822,10 +1852,11 @@ current_user = true
         // Act
         let result = mgr.get_current_user();
 
-        // Assert
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "no user signed in - please sign into a management node with: pexshell login"
+        assert_that!(
+            result,
+            err(displays_as(eq(
+                "no user signed in - please sign into a management node with: pexshell login"
+            )))
         );
     }
 
@@ -1872,15 +1903,20 @@ current_user = true
         let result = mgr.get_current_user();
 
         // Assert
-        let user = result.unwrap();
-        assert_eq!(user.address, "some.address");
-        assert!(matches!(
-            &user.credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "some_username" && password.secret() == "super_secret_password"
-        ));
+        assert_that!(
+            result,
+            ok(points_to(matches_pattern!(User {
+                address: eq("some.address"),
+                credentials: matches_pattern!(Credentials::Basic(matches_pattern!(
+                    BasicCredentials {
+                        username: eq("some_username"),
+                        password: some(sensitive_string(eq("super_secret_password"))),
+                    }
+                ))),
+                current_user: eq(false),
+                last_used: none(),
+            })))
+        );
     }
 
     #[test_case(&[
@@ -1938,8 +1974,7 @@ current_user = true
         let result = mgr.get_current_user();
 
         // Assert
-        let err = result.unwrap_err();
-        assert_eq!(err.to_string(), error_message);
+        assert_that!(result, err(displays_as(eq(error_message))));
     }
 
     #[test]
@@ -2003,14 +2038,19 @@ current_user = true
         let result = mgr.get_current_user();
 
         // Assert
-        let user = result.unwrap();
-        assert_eq!(user.address, "test_address.test.com");
-        assert!(matches!(
-            &user.credentials,
-            Credentials::Basic(BasicCredentials {
-                username,
-                password: Some(password)
-            }) if username == "admin" && password.secret() == "some_admin_password"
-        ));
+        assert_that!(
+            result,
+            ok(points_to(matches_pattern!(User {
+                address: eq("test_address.test.com"),
+                credentials: matches_pattern!(Credentials::Basic(matches_pattern!(
+                    BasicCredentials {
+                        username: eq("admin"),
+                        password: some(sensitive_string(eq("some_admin_password"))),
+                    }
+                ))),
+                current_user: eq(false),
+                last_used: none(),
+            })))
+        );
     }
 }

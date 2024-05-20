@@ -2,9 +2,10 @@
 
 use std::collections::HashMap;
 
+use googletest::prelude::*;
 use httptest::{
     all_of,
-    matchers::{eq, json_decoded, request},
+    matchers::{eq as heq, json_decoded, request},
     responders::status_code,
     Expectation, Server,
 };
@@ -31,7 +32,7 @@ async fn post_conference_config() {
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/api/admin/configuration/v1/conference/",),
-            request::body(json_decoded(eq(json!({"name": "post_test_conf"})))),
+            request::body(json_decoded(heq(json!({"name": "post_test_conf"})))),
         ])
         .respond_with(
             status_code(200)
@@ -60,7 +61,7 @@ async fn post_conference_config() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert_eq!(&output, "/api/admin/configuration/v1/conference/54/\n");
+    assert_that!(output, eq("/api/admin/configuration/v1/conference/54/\n"));
 }
 
 #[tokio::test]
@@ -75,7 +76,7 @@ async fn post_conference_lock_command() {
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/api/admin/command/v1/conference/lock/",),
-            request::body(json_decoded(eq(
+            request::body(json_decoded(heq(
                 json!({"conference_id": "22ec87ef-92e8-4100-a8be-d12da654f6c3"})
             ))),
         ])
@@ -103,5 +104,5 @@ async fn post_conference_lock_command() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 }

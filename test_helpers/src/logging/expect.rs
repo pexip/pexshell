@@ -658,6 +658,7 @@ impl Expectation for AnyGroup {
 
 #[cfg(test)]
 mod tests {
+    use googletest::{assert_that, matchers::eq};
     use log::Record;
     use test_case::test_case;
 
@@ -670,7 +671,7 @@ mod tests {
     fn test_predicate(line: Option<u32>, match_result: MatchResult) {
         let mut predicate = predicate!(|x| x.line() == Some(1));
         let record = Record::builder().line(line).build();
-        assert_eq!(predicate.matches(&record), match_result);
+        assert_that!(predicate.matches(&record), eq(match_result));
     }
 
     #[test_case(log::Level::Info, "mod", "message", MatchResult::Complete)]
@@ -686,7 +687,7 @@ mod tests {
 
         let mut exact = exact(level, mod_path, message);
 
-        assert_eq!(exact.matches(&record), match_result);
+        assert_that!(exact.matches(&record), eq(match_result));
     }
 
     #[test_case(
@@ -715,7 +716,7 @@ mod tests {
         );
         let record = Record::builder().file(file).line(line).level(level).build();
 
-        assert_eq!(all.matches(&record), match_result);
+        assert_that!(all.matches(&record), eq(match_result));
     }
 
     #[allow(clippy::cognitive_complexity)]
@@ -773,70 +774,70 @@ mod tests {
 
         for _ in 0..3 {
             // First log line
-            assert_eq!(all.matches(&r_info), MatchResult::Complete);
-            assert_eq!(all_set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(in_order.matches(&r_info), MatchResult::Match);
-            assert_eq!(set.matches(&r_info), MatchResult::Match);
-            assert_eq!(any_set_a.matches(&r_info), MatchResult::Match);
-            assert_eq!(any_set_b.matches(&r_info), MatchResult::Match);
-            assert_eq!(group.matches(&r_info), MatchResult::Match);
-            assert_eq!(any_group.matches(&r_info), MatchResult::Match);
+            assert_that!(all.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(all_set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(in_order.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(set.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(any_set_a.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(any_set_b.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(group.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(any_group.matches(&r_info), eq(MatchResult::Match));
 
             // Second log line
-            assert_eq!(all.matches(&r_info), MatchResult::Complete);
-            assert_eq!(all_set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(in_order.matches(&r_info), MatchResult::Match);
-            assert_eq!(set.matches(&r_info), MatchResult::Complete);
-            assert_eq!(any_set_a.matches(&r_info), MatchResult::Match);
-            assert_eq!(any_set_b.matches(&r_info), MatchResult::Match);
-            assert_eq!(group.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
+            assert_that!(all.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(all_set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(in_order.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(set.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(any_set_a.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(any_set_b.matches(&r_info), eq(MatchResult::Match));
+            assert_that!(group.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any_group.matches(&r_info), eq(MatchResult::NotMatch));
 
             // Third log line
-            assert_eq!(all.matches(&r_info), MatchResult::Complete);
-            assert_eq!(all_set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(in_order.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any_set_a.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any_set_b.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(group.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
+            assert_that!(all.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(all_set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(in_order.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any_set_a.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any_set_b.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(group.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any_group.matches(&r_info), eq(MatchResult::NotMatch));
 
             // Fourth log line
-            assert_eq!(all.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(all_set.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_trace), MatchResult::Complete);
-            assert_eq!(in_order.matches(&r_trace), MatchResult::Match);
-            assert_eq!(set.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any_set_a.matches(&r_trace), MatchResult::Match);
-            assert_eq!(any_set_b.matches(&r_trace), MatchResult::Complete);
-            assert_eq!(group.matches(&r_trace), MatchResult::Match);
-            assert_eq!(any_group.matches(&r_trace), MatchResult::Complete);
+            assert_that!(all.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(all_set.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_trace), eq(MatchResult::Complete));
+            assert_that!(in_order.matches(&r_trace), eq(MatchResult::Match));
+            assert_that!(set.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any_set_a.matches(&r_trace), eq(MatchResult::Match));
+            assert_that!(any_set_b.matches(&r_trace), eq(MatchResult::Complete));
+            assert_that!(group.matches(&r_trace), eq(MatchResult::Match));
+            assert_that!(any_group.matches(&r_trace), eq(MatchResult::Complete));
 
             // Fifth log line
-            assert_eq!(all.matches(&r_info), MatchResult::Complete);
-            assert_eq!(all_set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(in_order.matches(&r_info), MatchResult::Complete);
-            assert_eq!(set.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(any_set_a.matches(&r_info), MatchResult::Complete);
-            assert_eq!(any_set_b.matches(&r_info), MatchResult::NotMatch);
-            assert_eq!(group.matches(&r_info), MatchResult::Complete);
-            assert_eq!(any_group.matches(&r_info), MatchResult::NotMatch);
+            assert_that!(all.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(all_set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(in_order.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(set.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(any_set_a.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(any_set_b.matches(&r_info), eq(MatchResult::NotMatch));
+            assert_that!(group.matches(&r_info), eq(MatchResult::Complete));
+            assert_that!(any_group.matches(&r_info), eq(MatchResult::NotMatch));
 
             // Sixth log line
-            assert_eq!(all.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(all_set.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any.matches(&r_trace), MatchResult::Complete);
-            assert_eq!(in_order.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(set.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any_set_a.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any_set_b.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(group.matches(&r_trace), MatchResult::NotMatch);
-            assert_eq!(any_group.matches(&r_trace), MatchResult::NotMatch);
+            assert_that!(all.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(all_set.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any.matches(&r_trace), eq(MatchResult::Complete));
+            assert_that!(in_order.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(set.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any_set_a.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any_set_b.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(group.matches(&r_trace), eq(MatchResult::NotMatch));
+            assert_that!(any_group.matches(&r_trace), eq(MatchResult::NotMatch));
 
             all.reset();
             all_set.reset();
@@ -851,137 +852,147 @@ mod tests {
     }
 
     mod macros {
+        use googletest::{assert_that, matchers::eq};
+
+        use crate::googletest::debugs_as;
+
         // Note: we would usually import `super::*` here, but not importing helps us test our macro hygiene.
 
         #[test]
         fn test_all_macro() {
-            assert_eq!(format!("{:?}", all!()), "all { expectations: [] }");
-            assert_eq!(
-                format!("{:?}", all!(super::contains("abc"))),
-                "all { expectations: [Contains { substring: \"abc\" }] }"
+            assert_that!(all!(), debugs_as(eq("all { expectations: [] }")));
+            assert_that!(
+                all!(super::contains("abc")),
+                debugs_as(eq(
+                    "all { expectations: [Contains { substring: \"abc\" }] }"
+                ))
             );
-            assert_eq!(
-            format!("{:?}", all!(super::contains("abc"), super::contains("def"))),
-            "all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+            assert_that!(
+            all!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"))
         );
 
-            assert_eq!(
-            format!("{:?}", all!(super::contains("abc"), super::contains("def"), all!(),)),
-            "all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, all { expectations: [] }] }"
+            assert_that!(
+            all!(super::contains("abc"), super::contains("def"), all!(),),
+            debugs_as(eq("all { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, all { expectations: [] }] }"))
         );
         }
 
         #[test]
         fn test_any_macro() {
-            assert_eq!(format!("{:?}", any!()), "any { expectations: [] }");
-            assert_eq!(
-                format!("{:?}", any!(super::contains("abc"))),
-                "any { expectations: [Contains { substring: \"abc\" }] }"
+            assert_that!(any!(), debugs_as(eq("any { expectations: [] }")));
+            assert_that!(
+                any!(super::contains("abc")),
+                debugs_as(eq(
+                    "any { expectations: [Contains { substring: \"abc\" }] }"
+                ))
             );
-            assert_eq!(
-            format!("{:?}", any!(super::contains("abc"), super::contains("def"))),
-            "any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"
+            assert_that!(
+            any!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }] }"))
         );
 
-            assert_eq!(
-            format!("{:?}", any!(super::contains("abc"), super::contains("def"), any!(),)),
-            "any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, any { expectations: [] }] }"
+            assert_that!(
+            any!(super::contains("abc"), super::contains("def"), any!(),),
+            debugs_as(eq("any { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, any { expectations: [] }] }"))
         );
         }
 
         #[test]
         fn test_in_order_macro() {
-            assert_eq!(
-                format!("{:?}", in_order!()),
-                "InOrder { expectations: [], previous: None, next: 0 }"
+            assert_that!(
+                in_order!(),
+                debugs_as(eq("InOrder { expectations: [], previous: None, next: 0 }"))
             );
-            assert_eq!(
-            format!("{:?}", in_order!(super::contains("abc"))),
-            "InOrder { expectations: [Contains { substring: \"abc\" }], previous: None, next: 0 }"
+            assert_that!(
+            in_order!(super::contains("abc")),
+            debugs_as(eq("InOrder { expectations: [Contains { substring: \"abc\" }], previous: None, next: 0 }"))
         );
-            assert_eq!(
-            format!("{:?}", in_order!(super::contains("abc"), super::contains("def"))),
-            "InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], previous: None, next: 0 }"
+            assert_that!(
+            in_order!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], previous: None, next: 0 }"))
         );
 
-            assert_eq!(
-            format!("{:?}", in_order!(super::contains("abc"), super::contains("def"), in_order!(),)),
-            "InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, InOrder { expectations: [], previous: None, next: 0 }], previous: None, next: 0 }"
+            assert_that!(
+            in_order!(super::contains("abc"), super::contains("def"), in_order!(),),
+            debugs_as(eq("InOrder { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, InOrder { expectations: [], previous: None, next: 0 }], previous: None, next: 0 }"))
         );
         }
 
         #[test]
         fn test_set_macro() {
-            assert_eq!(
-                format!("{:?}", set!()),
-                "Set { unmet_expectations: [], .. }"
+            assert_that!(set!(), debugs_as(eq("Set { unmet_expectations: [], .. }")));
+            assert_that!(
+                set!(super::contains("abc")),
+                debugs_as(eq(
+                    "Set { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
+                ))
             );
-            assert_eq!(
-                format!("{:?}", set!(super::contains("abc"))),
-                "Set { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
-            );
-            assert_eq!(
-            format!("{:?}", set!(super::contains("abc"), super::contains("def"))),
-            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
+            assert_that!(
+            set!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"))
         );
 
-            assert_eq!(
-            format!("{:?}", set!(super::contains("abc"), super::contains("def"), set!(),)),
-            "Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Set { unmet_expectations: [], .. }], .. }"
+            assert_that!(
+            set!(super::contains("abc"), super::contains("def"), set!(),),
+            debugs_as(eq("Set { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Set { unmet_expectations: [], .. }], .. }"))
         );
         }
 
         #[test]
         fn test_any_set_macro() {
-            assert_eq!(
-                format!("{:?}", any_set!()),
-                "AnySet { expectations: [], .. }"
+            assert_that!(any_set!(), debugs_as(eq("AnySet { expectations: [], .. }")));
+            assert_that!(
+                any_set!(super::contains("abc")),
+                debugs_as(eq(
+                    "AnySet { expectations: [Contains { substring: \"abc\" }], .. }"
+                ))
             );
-            assert_eq!(
-                format!("{:?}", any_set!(super::contains("abc"))),
-                "AnySet { expectations: [Contains { substring: \"abc\" }], .. }"
-            );
-            assert_eq!(
-            format!("{:?}", any_set!(super::contains("abc"), super::contains("def"))),
-            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
+            assert_that!(
+            any_set!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"))
         );
 
-            assert_eq!(
-            format!("{:?}", any_set!(super::contains("abc"), super::contains("def"), any_set!(),)),
-            "AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, AnySet { expectations: [], .. }], .. }"
+            assert_that!(
+            any_set!(super::contains("abc"), super::contains("def"), any_set!(),),
+            debugs_as(eq("AnySet { expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, AnySet { expectations: [], .. }], .. }"))
         );
         }
 
         #[test]
         fn test_group_macro() {
-            assert_eq!(
-                format!("{:?}", group!()),
-                "Group { unmet_expectations: [], .. }"
+            assert_that!(
+                group!(),
+                debugs_as(eq("Group { unmet_expectations: [], .. }"))
             );
-            assert_eq!(
-                format!("{:?}", group!(super::contains("abc"))),
-                "Group { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
+            assert_that!(
+                group!(super::contains("abc")),
+                debugs_as(eq(
+                    "Group { unmet_expectations: [Contains { substring: \"abc\" }], .. }"
+                ))
             );
-            assert_eq!(
-            format!("{:?}", group!(super::contains("abc"), super::contains("def"))),
-            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"
+            assert_that!(
+            group!(super::contains("abc"), super::contains("def")),
+            debugs_as(eq("Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }], .. }"))
         );
 
-            assert_eq!(
-            format!("{:?}", group!(super::contains("abc"), super::contains("def"), group!(),)),
-            "Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Group { unmet_expectations: [], .. }], .. }"
+            assert_that!(
+            group!(super::contains("abc"), super::contains("def"), group!(),),
+            debugs_as(eq("Group { unmet_expectations: [Contains { substring: \"abc\" }, Contains { substring: \"def\" }, Group { unmet_expectations: [], .. }], .. }"))
         );
         }
 
         #[test]
         fn test_predicate_macro() {
-            assert_eq!(
-                format!("{:?}", predicate!(|_| true)),
-                "Closure { description: \"|_| true\", .. }"
+            assert_that!(
+                predicate!(|_| true),
+                debugs_as(eq("Closure { description: \"|_| true\", .. }"))
             );
-            assert_eq!(
-                format!("{:?}", predicate!(|x| x.line().unwrap() > 0)),
-                "Closure { description: \"|x| x.line().unwrap() > 0\", .. }"
+            assert_that!(
+                predicate!(|x| x.line().unwrap() > 0),
+                debugs_as(eq(
+                    "Closure { description: \"|x| x.line().unwrap() > 0\", .. }"
+                ))
             );
         }
     }

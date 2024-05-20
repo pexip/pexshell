@@ -51,6 +51,10 @@ impl CommandGen {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use googletest::prelude::*;
+
     use super::*;
 
     #[test]
@@ -61,9 +65,9 @@ mod tests {
             "/path/to/file.log",
             "cache",
         ]);
-        assert_eq!(
+        assert_that!(
             matches.get_one::<PathBuf>("log"),
-            Some(&PathBuf::from("/path/to/file.log"))
+            some(eq(Path::new("/path/to/file.log")))
         );
     }
 }

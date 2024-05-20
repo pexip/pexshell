@@ -318,6 +318,7 @@ async fn cache_schema<'auth>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use googletest::prelude::*;
     use httptest::{
         matchers::{all_of, request},
         responders::json_encoded,
@@ -438,11 +439,11 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(root_schema_from_cache, root_schema);
-        assert_eq!(test_endpoint_schema_from_cache, test_endpoint_schema);
-        assert_eq!(
+        assert_that!(root_schema_from_cache, eq(root_schema));
+        assert_that!(test_endpoint_schema_from_cache, eq(test_endpoint_schema));
+        assert_that!(
             another_test_endpoint_schema_from_cache,
-            another_test_endpoint_schema
+            eq(another_test_endpoint_schema)
         );
     }
 
@@ -510,7 +511,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(schema, json_schema());
+        assert_that!(schema, eq(json_schema()));
         std::fs::remove_dir_all(cache_path).unwrap();
     }
 

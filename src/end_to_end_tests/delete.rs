@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use googletest::prelude::*;
 use httptest::{matchers::request, responders::status_code, Expectation, Server};
 use test_helpers::get_test_context;
 
@@ -42,5 +43,5 @@ async fn delete_conference_config() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 }
