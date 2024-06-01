@@ -29,7 +29,7 @@ serde_json.workspace = true
 strum = { version = "0.26.1", features = ["derive"] }
 thiserror = "1.0"
 tokio = { workspace = true, features = ["fs"] }
-zeroize = { version = "1.7", features = ["zeroize_derive"] }
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 derive_more = "0.99.17"
