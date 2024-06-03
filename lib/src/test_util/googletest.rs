@@ -14,7 +14,6 @@ pub fn sensitive_string<
 }
 pub struct SensitiveStringMatcher<T, InnerMatcherT> {
     inner: InnerMatcherT,
-    // _phantom_inner: &'a str,
     _phantom_t: std::marker::PhantomData<T>,
 }
 

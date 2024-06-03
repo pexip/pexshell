@@ -103,6 +103,7 @@ mod tests {
     use serde::de::{Error, Visitor};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
+    use test_helpers::googletest::debugs_as;
     use zeroize::Zeroize;
 
     use crate::util::sensitive_string::SecureStringVisitor;
@@ -116,7 +117,7 @@ mod tests {
         let sensitive = SensitiveString::from(TEST_DATA);
         assert_that!(sensitive.to_string(), eq("*"));
         assert_that!(sensitive, displays_as(eq("*")));
-        assert_that!(format!("{:?}", &sensitive), eq(r#""*""#));
+        assert_that!(sensitive, debugs_as(eq(r#""*""#)));
         assert_that!(sensitive.secret(), eq(TEST_DATA));
     }
 
@@ -218,7 +219,7 @@ mod tests {
     #[test]
     fn test_debug() {
         let sensitive_string = SensitiveString::from("Test");
-        assert_that!(format!("{sensitive_string:?}"), eq(r#""*""#));
+        assert_that!(sensitive_string, debugs_as(eq(r#""*""#)));
     }
 
     #[test]

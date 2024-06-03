@@ -90,6 +90,7 @@ impl Error for ApiError {}
 mod tests {
     use googletest::prelude::*;
     use reqwest::StatusCode;
+    use test_helpers::googletest::debugs_as;
 
     use super::*;
 
@@ -100,7 +101,7 @@ mod tests {
         assert_that!(error.status(), none());
         assert_that!(error.inner(), none());
         assert_that!(error, displays_as(eq("api error: Test message.")));
-        assert_that!(format!("{:?}", &error), eq("Test message."));
+        assert_that!(error, debugs_as(eq("Test message.")));
     }
 
     #[test]
@@ -114,8 +115,10 @@ mod tests {
             displays_as(eq("api error with status 404 Not Found: Test message."))
         );
         assert_that!(
-            format!("{:?}", &error),
-            eq("\n\tresponse code: 404 Not Found\n\tmessage: Test message.")
+            error,
+            debugs_as(eq(
+                "\n\tresponse code: 404 Not Found\n\tmessage: Test message."
+            ))
         );
     }
 }

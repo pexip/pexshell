@@ -116,7 +116,9 @@ impl Configurer {
         assert_that!(
             &expected,
             eq(&actual),
-            "Config file contents incorrect - expected: {:?}, actual: {:?}",
+            "Config file contents incorrect -
+            \texpected: {:?}
+            \t  actual: {:?}",
             toml::to_string(&expected).unwrap(),
             toml::to_string(&actual).unwrap(),
         );
