@@ -429,6 +429,7 @@ mod tests {
 
     use clap::error::ErrorKind::InvalidSubcommand;
     use clap::{arg, Command};
+    use googletest::prelude::*;
     use lib::mcu::schema::{Endpoint, Field, Methods, Type};
     use lib::mcu::Api;
     use serde_json::json;
@@ -485,12 +486,12 @@ mod tests {
         let payload = create_post_payload(&endpoint, &args);
 
         // Assert
-        assert_eq!(
+        assert_that!(
             payload,
-            json!({
+            eq(json!({
                 "field_1": "test 1",
-                "field_2": "test 2"
-            })
+                "field_2": "test 2",
+            }))
         );
     }
 
@@ -544,12 +545,12 @@ mod tests {
         let payload = create_patch_payload(&endpoint, &args);
 
         // Assert
-        assert_eq!(
+        assert_that!(
             payload,
-            json!({
+            eq(json!({
                 "field_1": "test 1",
-                "field_2": "test 2"
-            })
+                "field_2": "test 2",
+            }))
         );
     }
 
@@ -581,20 +582,20 @@ mod tests {
             .clone()
             .try_get_matches_from(["test", "status", "conference", "delete", "1"])
             .unwrap();
-        assert_eq!(
+        assert_that!(
             command
                 .clone()
                 .try_get_matches_from(["test", "status", "conference", "post"])
                 .unwrap_err()
                 .kind(),
-            InvalidSubcommand
+            eq(InvalidSubcommand)
         );
-        assert_eq!(
+        assert_that!(
             command
                 .try_get_matches_from(["test", "status", "conference", "patch", "1"])
                 .unwrap_err()
                 .kind(),
-            InvalidSubcommand
+            eq(InvalidSubcommand)
         );
     }
 }

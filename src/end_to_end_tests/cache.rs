@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use googletest::prelude::*;
 use httptest::{
     matchers::request,
     responders::{json_encoded, status_code},
@@ -101,7 +102,7 @@ async fn cache_conference_config() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 }
 
 #[tokio::test]
@@ -113,15 +114,18 @@ async fn clear_cache() {
     let config =
         configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
     configure_schemas_configuration_conference_only(&test_context);
-    assert!(test_context.get_cache_dir().join("schemas").exists());
-    assert_eq!(
+    assert_that!(
+        test_context.get_cache_dir().join("schemas").exists(),
+        eq(true)
+    );
+    assert_that!(
         test_context
             .get_cache_dir()
             .join("schemas")
             .read_dir()
             .unwrap()
             .count(),
-        4
+        eq(4)
     );
 
     // Act
@@ -137,17 +141,17 @@ async fn clear_cache() {
 
     // Assert
     config.verify();
-    assert_eq!(
+    assert_that!(
         test_context
             .get_cache_dir()
             .join("schemas")
             .read_dir()
             .unwrap()
             .count(),
-        0
+        eq(0)
     );
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 }
 
 #[tokio::test]
@@ -225,7 +229,7 @@ async fn schema_field_with_dict_type_does_not_cause_crash() {
 
     // Assert 1
     let output = test_context.take_stdout();
-    assert_eq!(&output, "");
+    assert_that!(output, eq(""));
 
     // Act 2
     crate::run_with(
@@ -240,5 +244,5 @@ async fn schema_field_with_dict_type_does_not_cause_crash() {
 
     // Assert
     let output = test_context.take_stdout();
-    assert!(!output.is_empty());
+    assert_that!(output, not(eq("")));
 }

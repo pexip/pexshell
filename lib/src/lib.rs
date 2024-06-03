@@ -8,8 +8,12 @@ pub mod error;
 pub mod mcu;
 pub mod util;
 
+#[cfg(any(test, feature = "test_util"))]
+pub mod test_util;
+
 #[cfg(test)]
 mod tests {
+    use googletest::prelude::*;
     use log::{Level, Log, Record};
 
     use crate::util::SimpleLogger;
@@ -33,7 +37,7 @@ mod tests {
             .build();
 
         // Act & Assert
-        assert!(logger.enabled(record_1.metadata()));
-        assert!(!logger.enabled(record_2.metadata()));
+        assert_that!(logger.enabled(record_1.metadata()), eq(true));
+        assert_that!(logger.enabled(record_2.metadata()), eq(false));
     }
 }

@@ -202,6 +202,7 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
 #[cfg(test)]
 mod tests {
     use chrono::Duration;
+    use googletest::prelude::*;
     use httptest::all_of;
     use httptest::matchers::{
         contains,
@@ -212,13 +213,14 @@ mod tests {
     use serde_json::json;
 
     use crate::mcu::auth::AuthWith;
+    use crate::test_util::sensitive_string;
 
     use super::*;
 
     #[test]
     fn test_generate_token_id() {
         let token_id = OAuth2::generate_token_id();
-        assert_eq!(token_id.len(), 36);
+        assert_that!(token_id.len(), eq(36));
     }
 
     #[allow(clippy::too_many_lines)]
@@ -292,21 +294,24 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_eq!(response_content, json!({"test": "response"}));
+        assert_that!(response_content, eq(json!({"test": "response"})));
 
         server.verify_and_clear();
-        assert_eq!(
+        assert_that!(
             token_callback_count.load(std::sync::atomic::Ordering::Acquire),
-            1
+            eq(1)
         );
 
         {
             let token = token_from_callback.lock().unwrap();
             let token: &AuthToken = token.as_ref().unwrap();
 
-            assert_eq!(token.token.secret(), "test_token");
+            assert_that!(token.token, sensitive_string(eq("test_token")));
 
-            assert!((Utc::now() + Duration::hours(1)) - token.expires_at < Duration::seconds(60));
+            assert_that!(
+                (Utc::now() + Duration::hours(1)) - token.expires_at,
+                lt(Duration::seconds(60))
+            );
         }
 
         // Test token reuse
@@ -339,7 +344,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_eq!(response_content, json!({"test": "response_2"}));
+        assert_that!(response_content, eq(json!({"test": "response_2"})));
 
         server.verify_and_clear();
 
@@ -385,7 +390,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_eq!(response_content, json!({"test": "response_3"}));
+        assert_that!(response_content, eq(json!({"test": "response_3"})));
 
         server.verify_and_clear();
 
@@ -431,7 +436,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_eq!(response_content, json!({"test": "response_4"}));
+        assert_that!(response_content, eq(json!({"test": "response_4"})));
 
         server.verify_and_clear();
     }

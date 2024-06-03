@@ -338,6 +338,7 @@ mod tests {
     use std::collections::HashMap;
 
     use chrono::{FixedOffset, TimeZone, Utc};
+    use googletest::prelude::*;
     use httptest::{
         all_of,
         matchers::{contains, request, url_decoded},
@@ -346,7 +347,7 @@ mod tests {
     };
     use jsonwebtoken::{DecodingKey, Validation};
     use lib::util::SensitiveString;
-    use mockall::{predicate::eq, Sequence};
+    use mockall::{predicate as mp, Sequence};
     use serde_json::{json, Value};
     use test_helpers::{fs::OAuth2Credentials as OAuth2CredentialsHelper, VirtualFile};
     use wiremock::{
@@ -357,6 +358,7 @@ mod tests {
     use crate::{
         cli::Console,
         config::{self, BasicCredentials, Credentials, OAuth2Credentials, OAuth2Token, User},
+        test_util::sensitive_string,
     };
 
     use super::{combine_username, Login, MockInteract};
@@ -403,9 +405,9 @@ mod tests {
             current_user: false,
             last_used: None,
         };
-        assert_eq!(
-            combine_username(&user, &Utc).as_str(),
-            "username@testing.test (Last Used: Never)"
+        assert_that!(
+            combine_username(&user, &Utc),
+            eq("username@testing.test (Last Used: Never)")
         );
     }
 
@@ -420,9 +422,9 @@ mod tests {
             current_user: false,
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
-        assert_eq!(
-            combine_username(&user, &Utc).as_str(),
-            "username@testing.test (Last Used: 2007-10-19 07:23:04)"
+        assert_that!(
+            combine_username(&user, &Utc),
+            eq("username@testing.test (Last Used: 2007-10-19 07:23:04)")
         );
     }
 
@@ -438,9 +440,9 @@ mod tests {
             last_used: Some(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap()),
         };
         let tz = FixedOffset::west_opt(5 * 60 * 60).unwrap();
-        assert_eq!(
-            combine_username(&user, &tz).as_str(),
-            "username@testing.test (Last Used: 2007-10-19 02:23:04)"
+        assert_that!(
+            combine_username(&user, &tz),
+            eq("username@testing.test (Last Used: 2007-10-19 02:23:04)")
         );
     }
 
@@ -464,10 +466,10 @@ mod tests {
 
         // Assert
         let stdout = out.take();
-        assert_eq!(
+        assert_that!(
             stdout,
-            "  username.1@testing.test.1 (Last Used: Never)\n* username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)\n  \
-             username.3@testing.test.3 (Last Used: Never)\n"
+            eq("  username.1@testing.test.1 (Last Used: Never)\n* username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)\n  \
+                username.3@testing.test.3 (Last Used: Never)\n")
         );
     }
 
@@ -479,19 +481,19 @@ mod tests {
         login
             .interact
             .expect_text()
-            .with(eq("address"))
+            .with(mp::eq("address"))
             .once()
             .return_const("testing.test");
         login
             .interact
             .expect_text()
-            .with(eq("username"))
+            .with(mp::eq("username"))
             .once()
             .return_const("some_username");
         login
             .interact
             .expect_password()
-            .with(eq("password"))
+            .with(mp::eq("password"))
             .once()
             .return_const(SensitiveString::from("some_password"));
 
@@ -499,14 +501,18 @@ mod tests {
         let user = login.input_basic_user();
 
         // Assert
-        assert_eq!(user.address, "testing.test");
-        assert!(matches!(
-            user.credentials,
-            Credentials::Basic(BasicCredentials {
-                ref username,
-                password: Some(ref password)
-            }) if username == "some_username" && password.secret() == "some_password"
-        ));
+        assert_that!(
+            user,
+            matches_pattern!(User {
+                address: eq("testing.test"),
+                credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
+                    username: eq("some_username"),
+                    password: some(sensitive_string(eq("some_password"))),
+                }))),
+                current_user: eq(false),
+                last_used: none(),
+            })
+        );
     }
 
     #[test]
@@ -541,9 +547,9 @@ mod tests {
             .interact
             .expect_select::<String>()
             .with(
-                eq("select a user"),
-                eq(0),
-                eq([
+                mp::eq("select a user"),
+                mp::eq(0),
+                mp::eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
                     String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
@@ -615,9 +621,9 @@ mod tests {
             .interact
             .expect_select::<String>()
             .with(
-                eq("select a user"),
-                eq(0),
-                eq([
+                mp::eq("select a user"),
+                mp::eq(0),
+                mp::eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
                     String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
@@ -630,19 +636,19 @@ mod tests {
         login
             .interact
             .expect_text()
-            .with(eq("address"))
+            .with(mp::eq("address"))
             .once()
             .return_const("testing.new");
         login
             .interact
             .expect_text()
-            .with(eq("username"))
+            .with(mp::eq("username"))
             .once()
             .return_const("some_new_username");
         login
             .interact
             .expect_password()
-            .with(eq("password"))
+            .with(mp::eq("password"))
             .once()
             .return_const(SensitiveString::from("some_new_password"));
 
@@ -724,9 +730,9 @@ mod tests {
             .interact
             .expect_select::<String>()
             .with(
-                eq("select a user"),
-                eq(0),
-                eq([
+                mp::eq("select a user"),
+                mp::eq(0),
+                mp::eq([
                     String::from("username.1@testing.test.1 (Last Used: Never)"),
                     String::from("username.2@testing.test.2 (Last Used: 2007-10-19 07:23:04)"),
                     String::from("username.3@testing.test.3 (Last Used: Never)"),
@@ -740,20 +746,20 @@ mod tests {
             login
                 .interact
                 .expect_text()
-                .with(eq("address"))
+                .with(mp::eq("address"))
                 .once()
                 .return_const(uri);
         }
         login
             .interact
             .expect_text()
-            .with(eq("username"))
+            .with(mp::eq("username"))
             .once()
             .return_const("some_new_username");
         login
             .interact
             .expect_password()
-            .with(eq("password"))
+            .with(mp::eq("password"))
             .once()
             .return_const(SensitiveString::from("some_new_password"));
 

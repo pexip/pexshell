@@ -17,6 +17,7 @@ async-trait.workspace = true
 chrono.workspace = true
 console.workspace = true
 futures.workspace = true
+googletest = { workspace = true, optional = true }
 hex = "0.4.3"
 hyper.workspace = true
 jsonwebtoken.workspace = true
@@ -33,6 +34,7 @@ zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 derive_more = "0.99.17"
+googletest.workspace = true
 httptest.workspace = true
 test-case.workspace = true
 test_helpers = { path = "../test_helpers" }
@@ -41,3 +43,4 @@ tokio = { workspace = true, features = ["full"] }
 
 [features]
 all_logs = []
+test_util = ["dep:googletest"]

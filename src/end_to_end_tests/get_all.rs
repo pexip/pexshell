@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use googletest::prelude::*;
 use httptest::{
     all_of,
     matchers::{contains, request, url_decoded},
@@ -58,7 +59,7 @@ async fn get_returns_zero_objects() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(output, json!([]));
+    assert_that!(output, eq(json!([])));
 }
 
 #[tokio::test]
@@ -110,9 +111,9 @@ async fn get_returns_page() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(
+    assert_that!(
         output,
-        json!([
+        eq(json!([
             {
                 "id": 1,
                 "name": "test_1",
@@ -121,7 +122,7 @@ async fn get_returns_page() {
                 "id": 2,
                 "name": "test_2",
             },
-        ])
+        ]))
     );
 }
 
@@ -207,9 +208,9 @@ async fn get_multiple_pages() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(
+    assert_that!(
         output,
-        json!([
+        eq(json!([
             {
                 "id": 1,
                 "name": "test_1",
@@ -222,7 +223,7 @@ async fn get_multiple_pages() {
                 "id": 3,
                 "name": "test_3",
             },
-        ])
+        ]))
     );
 }
 
@@ -285,9 +286,9 @@ async fn get_limited_to_first_page() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(
+    assert_that!(
         output,
-        json!([
+        eq(json!([
             {
                 "id": 1,
                 "name": "test_1",
@@ -296,6 +297,6 @@ async fn get_limited_to_first_page() {
                 "id": 2,
                 "name": "test_2",
             },
-        ])
+        ]))
     );
 }

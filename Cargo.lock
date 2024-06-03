@@ -1132,6 +1132,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "googletest"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee44a233e2e661240ef77ed5de92ea9ecf70d4832963a8582a6681e1517f3673"
+dependencies = [
+ "googletest_macro",
+ "num-traits",
+ "regex",
+ "rustversion",
+]
+
+[[package]]
+name = "googletest_macro"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed3057b7d1e628480193188ccb1a7850d034a3add3a350f4ed921b48e287ada9"
+dependencies = [
+ "quote",
+ "syn 2.0.60",
+]
+
+[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1904,6 +1926,7 @@ dependencies = [
  "console",
  "derive_more",
  "futures",
+ "googletest",
  "hex",
  "httptest",
  "hyper 0.14.28",
@@ -1942,6 +1965,7 @@ dependencies = [
  "fslock",
  "futures",
  "git-version",
+ "googletest",
  "httptest",
  "is-terminal",
  "jsonwebtoken",
@@ -2817,6 +2841,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "console",
+ "googletest",
  "http 0.2.11",
  "httptest",
  "jsonwebtoken",

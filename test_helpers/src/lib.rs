@@ -11,6 +11,7 @@
 
 pub mod fs;
 pub mod future;
+pub mod googletest;
 pub mod logging;
 
 use std::{

@@ -88,33 +88,37 @@ impl Error for ApiError {}
 
 #[cfg(test)]
 mod tests {
+    use googletest::prelude::*;
     use reqwest::StatusCode;
+    use test_helpers::googletest::debugs_as;
 
     use super::*;
 
     #[test]
     fn test_api_error() {
         let error = ApiError::new(None, "Test message.", None);
-        assert_eq!(error.message(), "Test message.");
-        assert!(error.status().is_none());
-        assert!(error.inner().is_none());
-        assert_eq!(format!("{}", &error), "api error: Test message.");
-        assert_eq!(format!("{:?}", &error), "Test message.");
+        assert_that!(error.message(), eq("Test message."));
+        assert_that!(error.status(), none());
+        assert_that!(error.inner(), none());
+        assert_that!(error, displays_as(eq("api error: Test message.")));
+        assert_that!(error, debugs_as(eq("Test message.")));
     }
 
     #[test]
     fn test_api_error_with_status() {
         let error = ApiError::new(Some(StatusCode::NOT_FOUND), "Test message.", None);
-        assert_eq!(error.message(), "Test message.");
-        assert_eq!(error.status(), Some(StatusCode::NOT_FOUND));
-        assert!(error.inner().is_none());
-        assert_eq!(
-            format!("{}", &error),
-            "api error with status 404 Not Found: Test message."
+        assert_that!(error.message(), eq("Test message."));
+        assert_that!(error.status(), some(eq(StatusCode::NOT_FOUND)));
+        assert_that!(error.inner(), none());
+        assert_that!(
+            error,
+            displays_as(eq("api error with status 404 Not Found: Test message."))
         );
-        assert_eq!(
-            format!("{:?}", &error),
-            "\n\tresponse code: 404 Not Found\n\tmessage: Test message."
+        assert_that!(
+            error,
+            debugs_as(eq(
+                "\n\tresponse code: 404 Not Found\n\tmessage: Test message."
+            ))
         );
     }
 }

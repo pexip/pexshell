@@ -2,6 +2,8 @@ use test_helpers::TestContext;
 
 use crate::Directories;
 
+pub use lib::test_util::*;
+
 pub trait TestContextExtensions {
     fn get_directories(&self) -> Directories;
 }
