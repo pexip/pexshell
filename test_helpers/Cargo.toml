@@ -27,7 +27,10 @@ uuid.workspace = true
 zeroize = "1.8"
 
 [dev-dependencies]
-reqwest = { workspace = true, features = ["blocking", "rustls"] }
+reqwest = { workspace = true, features = [
+    "blocking",
+    "rustls-tls-native-roots",
+] }
 test-case.workspace = true
 
 [features]
