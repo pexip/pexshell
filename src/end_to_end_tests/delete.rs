@@ -3,8 +3,11 @@
 use std::collections::HashMap;
 
 use googletest::prelude::*;
-use httptest::{matchers::request, responders::status_code, Expectation, Server};
 use test_helpers::get_test_context;
+use wiremock::{
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
 use crate::{
     end_to_end_tests::configuration_helpers::{
@@ -17,18 +20,17 @@ use crate::{
 async fn delete_conference_config() {
     // Arrange
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    configure_config_test_user(&test_context, server.url_str("").trim_end_matches('/'));
+    configure_config_test_user(&test_context, server.uri());
     configure_schemas_configuration_conference_only(&test_context);
 
-    server.expect(
-        Expectation::matching(request::method_path(
-            "DELETE",
-            "/api/admin/configuration/v1/conference/52/",
-        ))
-        .respond_with(status_code(200)),
-    );
+    Mock::given(method("DELETE"))
+        .and(path("/api/admin/configuration/v1/conference/52/"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     // Act
     crate::run_with(

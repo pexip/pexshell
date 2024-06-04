@@ -203,14 +203,11 @@ impl<'callback> ApiClientAuth for OAuth2<'callback> {
 mod tests {
     use chrono::Duration;
     use googletest::prelude::*;
-    use httptest::all_of;
-    use httptest::matchers::{
-        contains,
-        request::{self},
-    };
-    use httptest::responders::json_encoded;
-    use httptest::Expectation;
     use serde_json::json;
+    use wiremock::{
+        matchers::{header, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use crate::mcu::auth::AuthWith;
     use crate::test_util::sensitive_string;
@@ -226,7 +223,8 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     #[tokio::test]
     async fn auth_with() {
-        let mut server = httptest::Server::run();
+        let server = MockServer::start().await;
+        let _test_context = test_helpers::get_test_context();
 
         let client = reqwest::Client::new();
 
@@ -245,7 +243,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
 
         let auth = OAuth2::new(
             client.clone(),
-            server.url("/oauth/token/").to_string(),
+            server.uri() + "/oauth/token/",
             "test_client".to_string(),
             client_key,
             None,
@@ -256,31 +254,29 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         );
 
         // Test initial token retrieval and application
-        server.expect(
-            Expectation::matching(all_of![request::method_path("POST", "/oauth/token/")])
-                .respond_with(json_encoded(json!({
-                    "access_token": "test_token",
-                    "expires_in": 3600,
-                    "token_type": "Bearer"
-                }))),
-        );
+        Mock::given(method("POST"))
+            .and(path("/oauth/token/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "access_token": "test_token",
+                "expires_in": 3600,
+                "token_type": "Bearer"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", "/api/admin/configuration/v1/something/"),
-                request::headers(contains(("authorization", "Bearer test_token"))),
-            ])
-            .respond_with(json_encoded(json!({
+        Mock::given(method("GET"))
+            .and(path("/api/admin/configuration/v1/something/"))
+            .and(header("Authorization", "Bearer test_token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "test": "response"
-            }))),
-        );
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
         let request = client
-            .get(
-                server
-                    .url("/api/admin/configuration/v1/something/")
-                    .to_string(),
-            )
+            .get(server.uri() + "/api/admin/configuration/v1/something/")
             .auth_with(&auth)
             .await
             .unwrap()
@@ -296,7 +292,8 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         let response_content = response.json::<serde_json::Value>().await.unwrap();
         assert_that!(response_content, eq(json!({"test": "response"})));
 
-        server.verify_and_clear();
+        server.verify().await;
+        server.reset().await;
         assert_that!(
             token_callback_count.load(std::sync::atomic::Ordering::Acquire),
             eq(1)
@@ -315,22 +312,18 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         }
 
         // Test token reuse
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", "/api/admin/configuration/v1/anything/"),
-                request::headers(contains(("authorization", "Bearer test_token"))),
-            ])
-            .respond_with(json_encoded(json!({
+        Mock::given(method("GET"))
+            .and(path("/api/admin/configuration/v1/anything/"))
+            .and(header("Authorization", "Bearer test_token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "test": "response_2"
-            }))),
-        );
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
         let request = client
-            .get(
-                server
-                    .url("/api/admin/configuration/v1/anything/")
-                    .to_string(),
-            )
+            .get(server.uri() + "/api/admin/configuration/v1/anything/")
             .auth_with(&auth)
             .await
             .unwrap()
@@ -346,37 +339,36 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         let response_content = response.json::<serde_json::Value>().await.unwrap();
         assert_that!(response_content, eq(json!({"test": "response_2"})));
 
-        server.verify_and_clear();
+        server.verify().await;
+        server.reset().await;
 
         // Test expired token behaviour
         auth.token.lock().await.as_mut().unwrap().expires_at =
             Utc::now() - chrono::Duration::minutes(1);
 
-        server.expect(
-            Expectation::matching(all_of![request::method_path("POST", "/oauth/token/")])
-                .respond_with(json_encoded(json!({
-                    "access_token": "test_token_2",
-                    "expires_in": 3600,
-                    "token_type": "Bearer"
-                }))),
-        );
+        Mock::given(method("POST"))
+            .and(path("/oauth/token/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "access_token": "test_token_2",
+                "expires_in": 3600,
+                "token_type": "Bearer"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", "/api/admin/configuration/v1/someone/"),
-                request::headers(contains(("authorization", "Bearer test_token_2"))),
-            ])
-            .respond_with(json_encoded(json!({
+        Mock::given(method("GET"))
+            .and(path("/api/admin/configuration/v1/someone/"))
+            .and(header("Authorization", "Bearer test_token_2"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "test": "response_3"
-            }))),
-        );
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
         let request = client
-            .get(
-                server
-                    .url("/api/admin/configuration/v1/someone/")
-                    .to_string(),
-            )
+            .get(server.uri() + "/api/admin/configuration/v1/someone/")
             .auth_with(&auth)
             .await
             .unwrap()
@@ -392,37 +384,36 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         let response_content = response.json::<serde_json::Value>().await.unwrap();
         assert_that!(response_content, eq(json!({"test": "response_3"})));
 
-        server.verify_and_clear();
+        server.verify().await;
+        server.reset().await;
 
         // Test expiring token behaviour
         auth.token.lock().await.as_mut().unwrap().expires_at =
             Utc::now() + chrono::Duration::minutes(4);
 
-        server.expect(
-            Expectation::matching(all_of![request::method_path("POST", "/oauth/token/")])
-                .respond_with(json_encoded(json!({
-                    "access_token": "test_token_3",
-                    "expires_in": 3600,
-                    "token_type": "Bearer"
-                }))),
-        );
+        Mock::given(method("POST"))
+            .and(path("/oauth/token/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "access_token": "test_token_3",
+                "expires_in": 3600,
+                "token_type": "Bearer"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", "/api/admin/configuration/v1/somebody/"),
-                request::headers(contains(("authorization", "Bearer test_token_3"))),
-            ])
-            .respond_with(json_encoded(json!({
+        Mock::given(method("GET"))
+            .and(path("/api/admin/configuration/v1/somebody/"))
+            .and(header("Authorization", "Bearer test_token_3"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "test": "response_4"
-            }))),
-        );
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
 
         let request = client
-            .get(
-                server
-                    .url("/api/admin/configuration/v1/somebody/")
-                    .to_string(),
-            )
+            .get(server.uri() + "/api/admin/configuration/v1/somebody/")
             .auth_with(&auth)
             .await
             .unwrap()
@@ -438,6 +429,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
         let response_content = response.json::<serde_json::Value>().await.unwrap();
         assert_that!(response_content, eq(json!({"test": "response_4"})));
 
-        server.verify_and_clear();
+        server.verify().await;
+        server.reset().await;
     }
 }

@@ -35,11 +35,11 @@ zeroize = { version = "1.8", features = ["zeroize_derive"] }
 [dev-dependencies]
 derive_more = "0.99.17"
 googletest.workspace = true
-httptest.workspace = true
 test-case.workspace = true
 test_helpers = { path = "../test_helpers" }
 uuid.workspace = true
 tokio = { workspace = true, features = ["full"] }
+wiremock.workspace = true
 
 [features]
 all_logs = []

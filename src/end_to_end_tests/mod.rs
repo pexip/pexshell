@@ -2,13 +2,12 @@
 
 use std::collections::HashMap;
 
-use httptest::{
-    matchers::{all_of, request},
-    responders::json_encoded,
-    Expectation, Server,
-};
 use serde_json::json;
-use test_helpers::{get_test_context, has_credentials};
+use test_helpers::get_test_context;
+use wiremock::{
+    matchers::{basic_auth, method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
 use crate::test_util::TestContextExtensions;
 
@@ -24,25 +23,25 @@ mod post;
 #[tokio::test]
 async fn basic_get() {
     let test_context = get_test_context();
-    let server = Server::run();
+    let server = MockServer::start().await;
 
-    server.expect(
-        Expectation::matching(all_of![
-            request::method_path("GET", "/api/admin/configuration/v1/conference/1/"),
-            has_credentials("test_user", "test_password"),
-        ])
-        .respond_with(json_encoded(json_response())),
-    );
+    Mock::given(method("GET"))
+        .and(path("/api/admin/configuration/v1/conference/1/"))
+        .and(basic_auth("test_user", "test_password"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json_response()))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     let config = format!(
         r#"
         [[users]]
-        address = "http://{}"
+        address = "{}"
         username = "test_user"
         password = "test_password"
         current_user = true
         "#,
-        server.addr(),
+        server.uri(),
     );
 
     test_context.create_config_file(config);

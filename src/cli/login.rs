@@ -339,19 +339,13 @@ mod tests {
 
     use chrono::{FixedOffset, TimeZone, Utc};
     use googletest::prelude::*;
-    use httptest::{
-        all_of,
-        matchers::{contains, request, url_decoded},
-        responders::json_encoded,
-        Expectation, Server,
-    };
     use jsonwebtoken::{DecodingKey, Validation};
     use lib::util::SensitiveString;
     use mockall::{predicate as mp, Sequence};
     use serde_json::{json, Value};
     use test_helpers::{fs::OAuth2Credentials as OAuth2CredentialsHelper, VirtualFile};
     use wiremock::{
-        matchers::{header, method, path},
+        matchers::{header, method, path, query_param},
         Mock, MockServer, Request, ResponseTemplate,
     };
 
@@ -667,11 +661,11 @@ mod tests {
     }
 
     #[allow(clippy::too_many_lines)]
-    #[test]
-    fn test_select_user_add_and_verify() {
+    #[tokio::test]
+    async fn test_select_user_add_and_verify() {
         // Arrange
-        let server = Server::run();
-        let uri = server.url_str("").trim_end_matches('/').to_owned();
+        let server = MockServer::start().await;
+        let uri = server.uri();
         let backend = MockInteract::new();
         let mut mock_config = config::MockConfigManager::new();
         mock_config
@@ -763,35 +757,31 @@ mod tests {
             .once()
             .return_const(SensitiveString::from("some_new_password"));
 
-        server.expect(
-            Expectation::matching(all_of![
-                request::method_path("GET", "/api/admin/status/v1/worker_vm/"),
-                request::query(url_decoded(all_of![
-                    contains(("limit", "1")),
-                    contains(("offset", "0"))
-                ])),
-            ])
-            .respond_with(json_encoded(json!({"meta": {
+        Mock::given(method("GET"))
+            .and(path("/api/admin/status/v1/worker_vm/"))
+            .and(query_param("limit", "1"))
+            .and(query_param("offset", "0"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"meta": {
                 "limit": 1,
                 "next": null,
                 "offset": 0,
                 "previous": null,
                 "total_count": 0,
-            }, "objects": []}))),
-        );
+            }, "objects": []})))
+            .expect(1)
+            .mount(&server)
+            .await;
 
         // Act
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(login.select_user(
+        login
+            .select_user(
                 &mut console,
                 &mut mock_config,
                 reqwest::Client::new(),
                 true,
                 false,
-            ))
+            )
+            .await
             .unwrap();
     }
 
