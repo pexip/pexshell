@@ -36,7 +36,7 @@ url = { version = "2.5", features = ["serde"] }
 http = "1.1"
 mockall = "0.11.4"
 test-case = "3.3"
-uuid = { version = "1.7", features = ["v4"] }
+uuid = { version = "1.9", features = ["v4"] }
 wiremock = "0.6.0"
 
 
