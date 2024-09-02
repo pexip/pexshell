@@ -172,7 +172,7 @@ mod tests {
         // test with serde
         assert_that!(
             serde_json::to_value(sensitive_wrapper).unwrap(),
-            eq(json!({ "payload": TEST_DATA }))
+            eq(&json!({ "payload": TEST_DATA }))
         );
     }
 

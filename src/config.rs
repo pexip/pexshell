@@ -796,7 +796,7 @@ mod credentials {
         fn delete(&mut self, address: &str, username: &str) -> keyring::Result<()> {
             let ident = format!("{username}@{address}");
             let entry = keyring::Entry::new(SERVICE, &ident)?;
-            entry.delete_password()
+            entry.delete_credential()
         }
     }
 }
@@ -937,7 +937,7 @@ mod tests {
                             username: eq("admin"),
                             password: some(sensitive_string(eq("some_admin_password"))),
                         }))),
-                        current_user: eq(false),
+                        current_user: eq(&false),
                         last_used: none(),
                     }),
                     pat!(User {
@@ -946,8 +946,8 @@ mod tests {
                             username: eq("a_user"),
                             password: some(sensitive_string(eq("another_password"))),
                         }))),
-                        current_user: eq(true),
-                        last_used: some(eq(Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())),
+                        current_user: eq(&true),
+                        last_used: some(eq(&Utc.with_ymd_and_hms(2007, 10, 19, 7, 23, 4).unwrap())),
                     }),
                 ],
             })
@@ -1265,7 +1265,7 @@ current_user = true
                         username: eq("admin"),
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1274,7 +1274,7 @@ current_user = true
                         username: eq("a_user"),
                         password: none(),
                     }))),
-                    current_user: eq(true),
+                    current_user: eq(&true),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1283,7 +1283,7 @@ current_user = true
                         username: eq("a_new_user"),
                         password: some(sensitive_string(eq("some_new_password"))),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
             ]
@@ -1374,7 +1374,7 @@ current_user = true
                         username: eq("admin"),
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1383,7 +1383,7 @@ current_user = true
                         username: eq("a_user"),
                         password: none(),
                     }))),
-                    current_user: eq(true),
+                    current_user: eq(&true),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1392,7 +1392,7 @@ current_user = true
                         username: eq("a_new_user"),
                         password: none(),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
             ]
@@ -1487,7 +1487,7 @@ current_user = true
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }
                 ))),
-                current_user: eq(false),
+                current_user: eq(&false),
                 last_used: none(),
             })
         );
@@ -1501,7 +1501,7 @@ current_user = true
                         password: none(),
                     }
                 ))),
-                current_user: eq(true),
+                current_user: eq(&true),
                 last_used: none(),
             })
         );
@@ -1516,7 +1516,7 @@ current_user = true
                         token: none(),
                     }
                 ))),
-                current_user: eq(false),
+                current_user: eq(&false),
                 last_used: none(),
             })
         );
@@ -1636,7 +1636,7 @@ current_user = true
                         username: eq("admin"),
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1645,7 +1645,7 @@ current_user = true
                         username: eq("a_user"),
                         password: none(),
                     }))),
-                    current_user: eq(true),
+                    current_user: eq(&true),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1655,8 +1655,8 @@ current_user = true
                         private_key: none(),
                         token: none(),
                     }))),
-                    current_user: eq(false),
-                    last_used: some(eq(last_used)),
+                    current_user: eq(&false),
+                    last_used: some(eq(&last_used)),
                 }),
             ]
         );
@@ -1748,7 +1748,7 @@ current_user = true
                         username: eq("admin"),
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }))),
-                    current_user: eq(false),
+                    current_user: eq(&false),
                     last_used: none(),
                 }),
                 pat!(User {
@@ -1757,7 +1757,7 @@ current_user = true
                         username: eq("a_user"),
                         password: none(),
                     }))),
-                    current_user: eq(true),
+                    current_user: eq(&true),
                     last_used: none(),
                 }),
             ]
@@ -1913,7 +1913,7 @@ current_user = true
                         password: some(sensitive_string(eq("super_secret_password"))),
                     }
                 ))),
-                current_user: eq(false),
+                current_user: eq(&false),
                 last_used: none(),
             })))
         );
@@ -2048,7 +2048,7 @@ current_user = true
                         password: some(sensitive_string(eq("some_admin_password"))),
                     }
                 ))),
-                current_user: eq(false),
+                current_user: eq(&false),
                 last_used: none(),
             })))
         );

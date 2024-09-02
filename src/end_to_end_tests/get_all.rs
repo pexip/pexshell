@@ -55,7 +55,7 @@ async fn get_returns_zero_objects() {
     // Assert
     let raw = test_context.take_stdout();
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_that!(output, eq(json!([])));
+    assert_that!(output, eq(&json!([])));
 }
 
 #[tokio::test]
@@ -107,7 +107,7 @@ async fn get_returns_page() {
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
     assert_that!(
         output,
-        eq(json!([
+        eq(&json!([
             {
                 "id": 1,
                 "name": "test_1",
@@ -202,7 +202,7 @@ async fn get_multiple_pages() {
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
     assert_that!(
         output,
-        eq(json!([
+        eq(&json!([
             {
                 "id": 1,
                 "name": "test_1",
@@ -278,7 +278,7 @@ async fn get_limited_to_first_page() {
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
     assert_that!(
         output,
-        eq(json!([
+        eq(&json!([
             {
                 "id": 1,
                 "name": "test_1",

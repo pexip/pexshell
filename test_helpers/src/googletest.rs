@@ -1,29 +1,31 @@
-use googletest::matcher::{Matcher, MatcherResult};
+use googletest::{
+    matcher::{Matcher, MatcherResult},
+    prelude::MatcherBase,
+};
 
-pub fn debugs_as<T: std::fmt::Debug, MatcherT: Matcher<ActualT = String>>(
+pub fn debugs_as<T: std::fmt::Debug, MatcherT: for<'a> Matcher<&'a str>>(
     inner: MatcherT,
-) -> impl Matcher<ActualT = T> {
+) -> impl for<'a> Matcher<&'a T> {
     DebugMatcher::<T, _> {
         inner,
         _phantom_t: std::marker::PhantomData,
     }
 }
 
-pub struct DebugMatcher<T: std::fmt::Debug, InnerMatcher: Matcher<ActualT = String>> {
+#[derive(MatcherBase)]
+pub struct DebugMatcher<T: std::fmt::Debug, InnerMatcher> {
     inner: InnerMatcher,
     _phantom_t: std::marker::PhantomData<T>,
 }
 
-impl<T: std::fmt::Debug, InnerMatcher: Matcher<ActualT = String>> Matcher
+impl<T: std::fmt::Debug, InnerMatcher: for<'a> Matcher<&'a str>> Matcher<&T>
     for DebugMatcher<T, InnerMatcher>
 {
-    type ActualT = T;
-
-    fn matches(&self, actual: &Self::ActualT) -> googletest::matcher::MatcherResult {
+    fn matches(&self, actual: &T) -> googletest::matcher::MatcherResult {
         self.inner.matches(&format!("{actual:?}"))
     }
 
-    fn explain_match(&self, actual: &Self::ActualT) -> googletest::description::Description {
+    fn explain_match(&self, actual: &T) -> googletest::description::Description {
         format!(
             "which debugs as a string {}",
             self.inner.explain_match(&format!("{actual:?}"))

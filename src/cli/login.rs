@@ -293,7 +293,7 @@ impl<Backend: Interact> Login<Backend> {
         config::User::new_oauth2(address, client_id, client_cert)
     }
 
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::unused_self, clippy::needless_pass_by_ref_mut)]
     pub fn list_users(&mut self, console: &mut Console, config: &impl config::Configurer) {
         let mut output = String::new();
         for user in config.get_users() {
@@ -503,7 +503,7 @@ mod tests {
                     username: eq("some_username"),
                     password: some(sensitive_string(eq("some_password"))),
                 }))),
-                current_user: eq(false),
+                current_user: eq(&false),
                 last_used: none(),
             })
         );

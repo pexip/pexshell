@@ -2,7 +2,7 @@ use crate::util::SensitiveString;
 use googletest::prelude::*;
 
 pub fn sensitive_string<
-    MatcherT: Matcher<ActualT = SensitiveStringWrapper>,
+    MatcherT: for<'a> Matcher<&'a SensitiveStringWrapper>,
     T: AsRef<SensitiveString> + std::fmt::Debug,
 >(
     inner: MatcherT,
@@ -12,6 +12,8 @@ pub fn sensitive_string<
         _phantom_t: std::marker::PhantomData,
     }
 }
+
+#[derive(MatcherBase)]
 pub struct SensitiveStringMatcher<T, InnerMatcherT> {
     inner: InnerMatcherT,
     _phantom_t: std::marker::PhantomData<T>,
@@ -37,14 +39,12 @@ impl<'a> PartialEq<&'a str> for SensitiveStringWrapper {
     }
 }
 
-impl<MatcherT, T: AsRef<SensitiveString> + std::fmt::Debug> Matcher
+impl<MatcherT, T: AsRef<SensitiveString> + std::fmt::Debug> Matcher<&T>
     for SensitiveStringMatcher<T, MatcherT>
 where
-    MatcherT: Matcher<ActualT = SensitiveStringWrapper>,
+    MatcherT: for<'a> Matcher<&'a SensitiveStringWrapper>,
 {
-    type ActualT = T;
-
-    fn matches(&self, actual: &Self::ActualT) -> googletest::matcher::MatcherResult {
+    fn matches(&self, actual: &T) -> googletest::matcher::MatcherResult {
         self.inner
             .matches(&SensitiveStringWrapper(actual.as_ref().clone()))
     }
@@ -56,7 +56,7 @@ where
         self.inner.describe(matcher_result)
     }
 
-    fn explain_match(&self, actual: &Self::ActualT) -> googletest::description::Description {
+    fn explain_match(&self, actual: &T) -> googletest::description::Description {
         self.inner
             .explain_match(&SensitiveStringWrapper(actual.as_ref().clone()))
     }
