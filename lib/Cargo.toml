@@ -27,13 +27,13 @@ rand = "0.8.5"
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-strum = { version = "0.26.2", features = ["derive"] }
+strum = { version = "0.26.3", features = ["derive"] }
 thiserror = "1.0"
 tokio = { workspace = true, features = ["fs"] }
 zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-derive_more = "0.99.17"
+derive_more = { version = "1.0.0", features = ["display", "error"] }
 googletest.workspace = true
 test-case.workspace = true
 test_helpers = { path = "../test_helpers" }

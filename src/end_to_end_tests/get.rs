@@ -58,7 +58,7 @@ async fn get_conference_config() {
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
     assert_that!(
         output,
-        eq(json!({
+        eq(&json!({
             "id": 5,
             "name": "some_test_conference",
         }))
@@ -178,7 +178,7 @@ async fn get_conference_config_oauth2() {
     let output: serde_json::Value = serde_json::from_str(&raw).unwrap();
     assert_that!(
         output,
-        eq(json!({
+        eq(&json!({
             "id": 5,
             "name": "some_test_conference",
         }))

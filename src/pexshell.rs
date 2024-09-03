@@ -284,7 +284,7 @@ mod tests {
         let log_file_path = String::from(dirs.tmp_dir.join("pexshell.log").to_str().unwrap());
         assert_that!(
             std::fs::read_to_string(&config_path),
-            ok(eq(format!(
+            ok(eq(&format!(
                 r#"[log]
 file = {file_path}
 "#,

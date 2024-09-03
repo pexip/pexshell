@@ -290,7 +290,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_that!(response_content, eq(json!({"test": "response"})));
+        assert_that!(response_content, eq(&json!({"test": "response"})));
 
         server.verify().await;
         server.reset().await;
@@ -337,7 +337,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_that!(response_content, eq(json!({"test": "response_2"})));
+        assert_that!(response_content, eq(&json!({"test": "response_2"})));
 
         server.verify().await;
         server.reset().await;
@@ -382,7 +382,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_that!(response_content, eq(json!({"test": "response_3"})));
+        assert_that!(response_content, eq(&json!({"test": "response_3"})));
 
         server.verify().await;
         server.reset().await;
@@ -427,7 +427,7 @@ Hb3Esc1sspNDZRV/RPEFJyIJgvN/QncWLPhUGSYuF2BNpgQuM2KVdnLK
             .error_for_status()
             .unwrap();
         let response_content = response.json::<serde_json::Value>().await.unwrap();
-        assert_that!(response_content, eq(json!({"test": "response_4"})));
+        assert_that!(response_content, eq(&json!({"test": "response_4"})));
 
         server.verify().await;
         server.reset().await;

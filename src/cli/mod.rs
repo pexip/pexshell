@@ -196,11 +196,10 @@ fn generate_endpoint_subcommand(name: &str, endpoint: &Endpoint) -> clap::Comman
             ),
             Post => command.subcommand(
                 clap::Command::new("post").args(
-                    &endpoint
+                    endpoint
                         .fields
                         .iter()
-                        .filter_map(|(name, field)| generate_post_field_arg(name, field))
-                        .collect::<Vec<clap::Arg>>(),
+                        .filter_map(|(name, field)| generate_post_field_arg(name, field)),
                 ),
             ),
             Patch => command.subcommand(
@@ -211,11 +210,10 @@ fn generate_endpoint_subcommand(name: &str, endpoint: &Endpoint) -> clap::Comman
                             .action(ArgAction::Set),
                     )
                     .args(
-                        &endpoint
+                        endpoint
                             .fields
                             .iter()
-                            .filter_map(|(name, field)| generate_patch_field_arg(name, field))
-                            .collect::<Vec<clap::Arg>>(),
+                            .filter_map(|(name, field)| generate_patch_field_arg(name, field)),
                     ),
             ),
             Put => command,
@@ -226,11 +224,10 @@ fn generate_endpoint_subcommand(name: &str, endpoint: &Endpoint) -> clap::Comman
 
 fn generate_endpoint_subcommand_for_command_api(name: &str, endpoint: &Endpoint) -> clap::Command {
     clap::Command::new(String::from(name)).args(
-        &endpoint
+        endpoint
             .fields
             .iter()
-            .filter_map(|(name, field)| generate_post_field_arg(name, field))
-            .collect::<Vec<clap::Arg>>(),
+            .filter_map(|(name, field)| generate_post_field_arg(name, field)),
     )
 }
 
@@ -488,7 +485,7 @@ mod tests {
         // Assert
         assert_that!(
             payload,
-            eq(json!({
+            eq(&json!({
                 "field_1": "test 1",
                 "field_2": "test 2",
             }))
@@ -547,7 +544,7 @@ mod tests {
         // Assert
         assert_that!(
             payload,
-            eq(json!({
+            eq(&json!({
                 "field_1": "test 1",
                 "field_2": "test 2",
             }))

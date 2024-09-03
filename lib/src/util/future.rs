@@ -76,7 +76,7 @@ mod tests {
         let result = runtime.block_on(join_all_results(results.into_iter()));
 
         // Assert
-        assert_that!(result, err(eq(())));
+        assert_that!(result, err(eq(&())));
         assert_that!(*call_order.lock(), container_eq([0, 1, 2]));
     }
 }

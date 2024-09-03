@@ -435,11 +435,11 @@ mod tests {
         )
         .unwrap();
 
-        assert_that!(root_schema_from_cache, eq(root_schema));
-        assert_that!(test_endpoint_schema_from_cache, eq(test_endpoint_schema));
+        assert_that!(root_schema_from_cache, eq(&root_schema));
+        assert_that!(test_endpoint_schema_from_cache, eq(&test_endpoint_schema));
         assert_that!(
             another_test_endpoint_schema_from_cache,
-            eq(another_test_endpoint_schema)
+            eq(&another_test_endpoint_schema)
         );
     }
 
@@ -471,7 +471,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path(format!("/api/admin/{api_path}/{endpoint}/schema/")))
-            .respond_with(ResponseTemplate::new(200).set_body_json(&json_schema()))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json_schema()))
             .mount(&server)
             .await;
 
@@ -498,7 +498,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_that!(schema, eq(json_schema()));
+        assert_that!(schema, eq(&json_schema()));
         std::fs::remove_dir_all(cache_path).unwrap();
     }
 
