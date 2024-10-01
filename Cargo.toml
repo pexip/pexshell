@@ -70,7 +70,7 @@ fslock = "0.2.1"
 futures.workspace = true
 git-version = "0.3.9"
 is-terminal = "0.4.13" # for determining if stdout is a terminal (interactive)
-keyring = { version = "3.2", features = [
+keyring = { version = "3.3", features = [
     "apple-native",
     "windows-native",
     "sync-secret-service",
