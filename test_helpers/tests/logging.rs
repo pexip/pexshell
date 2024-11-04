@@ -14,26 +14,10 @@ fn test_expect_log() {
 }
 
 #[test]
-fn test_expect_log_verify_on_drop() {
-    let test_context = get_test_context();
-    let test_logger = test_context.logger();
-    test_logger.expect(all!(level(log::Level::Info), contains("Test info log")));
-    info!("Test info log");
-}
-
-#[test]
 #[should_panic]
 fn test_expect_log_fails() {
-    let test_context = get_test_context();
+    let test_context = get_test_context().always_clean_up();
     let test_logger = test_context.logger();
     test_logger.expect(all!(level(log::Level::Info), contains("Test info log")));
     test_logger.verify();
-}
-
-#[test]
-#[should_panic]
-fn test_expect_log_fails_verify_on_drop() {
-    let test_context = get_test_context();
-    let test_logger = test_context.logger();
-    test_logger.expect(all!(level(log::Level::Info), contains("Test info log")));
 }

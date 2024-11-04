@@ -242,6 +242,11 @@ async fn main() -> ExitCode {
     let result = pexshell.run(args).await;
 
     if let Err(e) = result {
+        if let Some(code) = e.downcast_ref::<pexshell::ExitCode>() {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            return ExitCode::from(code.code() as u8);
+        }
+
         error!("fatal error occurred: {e:?}");
 
         let style = if is_stderr_interactive {

@@ -7,6 +7,7 @@ use crate::{
     Directories, LOGGER,
 };
 
+use anyhow::anyhow;
 use futures::TryStreamExt;
 use lib::{
     error,
@@ -18,7 +19,7 @@ use lib::{
 };
 use log::{debug, trace, LevelFilter};
 use serde_json::Value;
-use std::{collections::HashMap, future, io::Write, path::PathBuf};
+use std::{collections::HashMap, fmt::Display, future, io::Write, path::PathBuf};
 
 fn read_config(
     dirs: &Directories,
@@ -72,6 +73,35 @@ fn read_config(
     trace!("I'M ALIVE!");
     Ok(config)
 }
+
+pub struct ExitCode(i32);
+
+impl ExitCode {
+    pub fn code(&self) -> i32 {
+        self.0
+    }
+}
+impl From<i32> for ExitCode {
+    fn from(code: i32) -> Self {
+        Self(code)
+    }
+}
+impl From<ExitCode> for i32 {
+    fn from(code: ExitCode) -> Self {
+        code.0
+    }
+}
+impl Display for ExitCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl std::fmt::Debug for ExitCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ExitCode").field(&self.0).finish()
+    }
+}
+impl std::error::Error for ExitCode {}
 
 pub struct PexShell<'a> {
     directories: &'a Directories,
@@ -172,7 +202,10 @@ impl<'a> PexShell<'a> {
                 } else {
                     writeln!(self.console.stderr(), "{}", error.render())?;
                 }
-                std::process::exit(error.exit_code());
+                if error.exit_code() == 0 {
+                    return Ok(());
+                }
+                return Err(anyhow!(ExitCode::from(error.exit_code())));
             }
         };
 

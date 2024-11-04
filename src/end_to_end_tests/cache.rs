@@ -263,6 +263,6 @@ async fn schema_field_with_dict_type_does_not_cause_crash() {
     .unwrap();
 
     // Assert
-    let output = test_context.take_stdout();
+    let output = test_context.take_stderr();
     assert_that!(output, not(eq("")));
 }
