@@ -392,7 +392,7 @@ mod tests {
         logger.log(&record);
 
         // Assert
-        let log = std::fs::read_to_string(log_path).unwrap();
+        let log = std::fs::read_to_string(&log_path).unwrap();
         let log_lines: Vec<&str> = log.lines().collect();
 
         if should_log {
@@ -405,6 +405,7 @@ mod tests {
         } else {
             assert_that!(log_lines, empty());
         }
+        std::fs::remove_file(log_path).unwrap();
     }
 
     #[test]
