@@ -133,21 +133,24 @@ pub struct TestContext {
 
 impl Drop for TestContext {
     fn drop(&mut self) {
-        if std::thread::panicking() && self.clean_up != CleanUpMode::Always {
-            if self.test_dir.exists() {
+        if !self.test_dir.exists() {
+            return;
+        }
+        match self.clean_up {
+            CleanUpMode::NotOnPanic if std::thread::panicking() => {
                 warn!(
                     "Test appears to have failed due to panic - leaving behind test environment in {:?}.",
                     &self.test_dir
                 );
             }
-        } else {
-            if self.clean_up != CleanUpMode::Never && self.test_dir.exists() {
+            CleanUpMode::Always | CleanUpMode::NotOnPanic => {
                 info!("Cleaning up test dir...");
                 std::fs::remove_dir_all(&self.test_dir).unwrap();
-            } else if self.test_dir.exists() {
+                info!("Done!");
+            }
+            CleanUpMode::Never => {
                 warn!("Leaving behind test environment in {:?}.", &self.test_dir);
             }
-            info!("Done!");
         }
     }
 }
