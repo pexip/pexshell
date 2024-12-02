@@ -19,7 +19,7 @@ impl<'a, T> MockFuture<'a, T> {
     }
 }
 
-impl<'a, T: 'static> Future for MockFuture<'a, T> {
+impl<T: 'static> Future for MockFuture<'_, T> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

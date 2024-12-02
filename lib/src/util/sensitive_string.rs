@@ -73,7 +73,7 @@ impl AsMut<Self> for SensitiveString {
 
 struct SecureStringVisitor;
 
-impl<'de> Visitor<'de> for SecureStringVisitor {
+impl Visitor<'_> for SecureStringVisitor {
     type Value = SensitiveString;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -126,7 +126,7 @@ pub struct ApiClient<'auth> {
     semaphore: Arc<Semaphore>,
 }
 
-impl<'auth> Clone for ApiClient<'auth> {
+impl Clone for ApiClient<'_> {
     fn clone(&self) -> Self {
         Self {
             http_client: self.http_client.clone(),
@@ -485,7 +485,7 @@ struct JsonError {
 
 #[allow(clippy::no_effect_underscore_binding)]
 #[async_trait]
-impl<'auth> IApiClient for ApiClient<'auth> {
+impl IApiClient for ApiClient<'_> {
     async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>> {
         let is_command = matches!(
             request,

@@ -46,7 +46,7 @@ pub struct TestLoggerContext<'a> {
     _guard: RwLockWriteGuard<'a, ()>,
 }
 
-impl<'a> TestLoggerContext<'a> {
+impl TestLoggerContext<'_> {
     #[allow(dead_code)]
     pub fn get_config(&self) -> RwLockReadGuard<TestLoggerConfig> {
         self.test_logger.get_config()
@@ -81,7 +81,7 @@ impl<'a> TestLoggerContext<'a> {
     }
 }
 
-impl<'a> Drop for TestLoggerContext<'a> {
+impl Drop for TestLoggerContext<'_> {
     fn drop(&mut self) {
         self.clear();
     }

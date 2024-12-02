@@ -14,7 +14,7 @@ impl<'a, T> StreamWrapper<'a, T> {
     }
 }
 
-impl<'a, T> Stream for StreamWrapper<'a, T> {
+impl<T> Stream for StreamWrapper<'_, T> {
     type Item = T;
 
     fn poll_next(
@@ -25,7 +25,7 @@ impl<'a, T> Stream for StreamWrapper<'a, T> {
     }
 }
 
-impl<'a, T> std::iter::IntoIterator for StreamWrapper<'a, T> {
+impl<T> std::iter::IntoIterator for StreamWrapper<'_, T> {
     type IntoIter = BlockingStream<Self>;
     type Item = T;
 

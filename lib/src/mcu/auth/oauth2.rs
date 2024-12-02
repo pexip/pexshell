@@ -42,7 +42,7 @@ struct Claims<'a> {
     token_id: &'a str,
 }
 
-impl<'a> serde::Serialize for Claims<'a> {
+impl serde::Serialize for Claims<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -140,7 +140,7 @@ impl<'callback> OAuth2<'callback> {
 }
 
 #[async_trait]
-impl<'callback> ApiClientAuth for OAuth2<'callback> {
+impl ApiClientAuth for OAuth2<'_> {
     async fn add_auth(
         &self,
         request: reqwest::RequestBuilder,
