@@ -11,20 +11,12 @@ wildcards = "deny"
 allow-wildcard-paths = true
 highlight = "all"
 # Certain crates/versions that will be skipped when doing duplicate detection.
-skip = [
-    { name = "hermit-abi", version = "0.3.9" },
-    { name = "hermit-abi", version = "0.4.0" },
-    { name = "base64", version = "0.21.7" },
-    { name = "base64", version = "0.22.1" },
-]
+skip = [{ name = "base64", version = "0.21.7" }]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [
     { name = "rustix", version = "*" },
-    { name = "regex-automata", version = "*" },
-    { name = "redox_syscall", version = "*" },
-    { name = "windows-sys", version = "0.48.0" },
-    { name = "windows-sys", version = "0.52.0" },
-    { name = "windows-sys", version = "0.59.0" },
+    { name = "security-framework", version = "2.11.1" }, # keyring uses old version
+    { name = "thiserror", version = "1.0" },             # dialoguer uses old version
 ]
 
 [sources]
