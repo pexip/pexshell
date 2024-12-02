@@ -1,4 +1,4 @@
-accepted = ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause"]
+accepted = ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "Unicode-3.0"]
 workarounds = ["ring", "chrono", "rustls"]
 
 [async-trait.clarify]
