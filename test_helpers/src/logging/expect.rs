@@ -83,6 +83,7 @@ macro_rules! all {
 }
 
 /// Matches if and only if any of the given expectations completely match (`MatchResult::Complete`) on the given log message.
+///
 /// Expectations are tried in order. Partial matches (`MatchResult::Match`) are ignored.
 #[must_use]
 pub fn any(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
@@ -90,6 +91,7 @@ pub fn any(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
 }
 
 /// Matches if and only if any of the given expectations completely match (`MatchResult::Complete`) on the given log message.
+///
 /// Expectations are tried in order. Partial matches (`MatchResult::Match`) are ignored.
 #[macro_export]
 macro_rules! any {
@@ -101,8 +103,10 @@ macro_rules! any {
     }
 }
 
-/// Matches if all expectations completely match in the order they are given. Expectations do not all have to match
-/// completely on a single message, but the next expectation cannot begin matching until the previous expectation is complete.
+/// Matches if all expectations completely match in the order they are given.
+///
+/// Expectations do not all have to match completely on a single message, but the next expectation cannot begin matching
+/// until the previous expectation is complete.
 #[must_use]
 pub fn in_order(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     InOrder {
@@ -112,8 +116,10 @@ pub fn in_order(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     }
 }
 
-/// Matches if all expectations completely match in the order they are given. Expectations do not all have to match
-/// completely on a single message, but the next expectation cannot begin matching until the previous expectation is complete.
+/// Matches if all expectations completely match in the order they are given.
+///
+/// Expectations do not all have to match completely on a single message, but the next expectation cannot begin matching
+/// until the previous expectation is complete.
 /// Each log message can at most be matched against a single expectation, so two identical expectations in sequence
 /// would consume one matching log message (or matching sequence of messages) each.
 #[macro_export]
@@ -126,9 +132,10 @@ macro_rules! in_order {
     }
 }
 
-/// Matches if all expectations completely match. For each log, expectations are tried in the order they are given and
-/// when an expectation is matched, subsequent expectations are not tried. Expectations do not all have to match
-/// completely against any one log message.
+/// Matches if all expectations completely match.
+///
+/// For each log, expectations are tried in the order they are given and when an expectation is matched, subsequent
+/// expectations are not tried. Expectations do not all have to match completely against any one log message.
 #[must_use]
 pub fn set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     Set {
@@ -138,9 +145,10 @@ pub fn set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     }
 }
 
-/// Matches if all expectations completely match. For each log, expectations are tried in the order they are given and
-/// when an expectation is matched, subsequent expectations are not tried. Expectations do not all have to match
-/// completely against any one log message.
+/// Matches if all expectations completely match.
+///
+/// For each log, expectations are tried in the order they are given and when an expectation is matched, subsequent
+/// expectations are not tried. Expectations do not all have to match completely against any one log message.
 #[macro_export]
 macro_rules! set {
     [ $( $x:expr ),* $(,)? ] => {
@@ -151,9 +159,10 @@ macro_rules! set {
     }
 }
 
-/// Matches if any expectation completely matches. For each log, expectations are tried in the order they are given and
-/// when an expectation is matched, subsequent expectations are not tried. Expectations do not have to match
-/// completely against any one log message.
+/// Matches if any expectation completely matches.
+///
+/// For each log, expectations are tried in the order they are given and when an expectation is matched, subsequent
+/// expectations are not tried. Expectations do not have to match completely against any one log message.
 #[must_use]
 pub fn any_set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     AnySet {
@@ -163,9 +172,10 @@ pub fn any_set(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
     }
 }
 
-/// Matches if any expectation completely matches. For each log, expectations are tried in the order they are given and
-/// when an expectation is matched, subsequent expectations are not tried. Expectations do not have to match
-/// completely against any one log message.
+/// Matches if any expectation completely matches.
+///
+/// For each log, expectations are tried in the order they are given and when an expectation is matched, subsequent
+/// expectations are not tried. Expectations do not have to match completely against any one log message.
 #[macro_export]
 macro_rules! any_set {
     [ $( $x:expr ),* $(,)? ] => {
@@ -176,7 +186,9 @@ macro_rules! any_set {
     }
 }
 
-/// Matches if all expectations completely match. All expectations are tried on all log messages until all are complete.
+/// Matches if all expectations completely match.
+///
+/// All expectations are tried on all log messages until all are complete.
 /// Expectations do not have to match completely against any one log message.
 #[must_use]
 pub fn group(expectations: Vec<Box<dyn Expectation>>) -> impl Expectation {
