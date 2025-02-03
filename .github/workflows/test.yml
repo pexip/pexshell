@@ -18,8 +18,8 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: debug-build
-          rust-version: nightly
-          rust-components: llvm-tools-preview
+          rust-version: stable
+          rust-components: llvm-tools
           cargo-install: cargo-nextest,cargo-llvm-cov
       - name: Run tests
         run: cargo llvm-cov --workspace --locked nextest --html --features ci
