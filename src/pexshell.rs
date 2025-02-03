@@ -318,9 +318,9 @@ mod tests {
         assert_that!(
             std::fs::read_to_string(&config_path),
             ok(eq(&format!(
-                r#"[log]
+                r"[log]
 file = {file_path}
-"#,
+",
                 file_path = if log_file_path.contains('\\') {
                     format!("'{log_file_path}'")
                 } else {

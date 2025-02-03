@@ -932,7 +932,7 @@ mod tests {
                         && claims
                             .get("iat")
                             .and_then(Value::as_i64)
-                            .map_or(false, |iat| {
+                            .is_some_and(|iat| {
                                 let now = Utc::now().timestamp();
                                 iat <= now && now <= iat + 60
                             })
@@ -940,7 +940,7 @@ mod tests {
                             .claims
                             .get("exp")
                             .and_then(Value::as_i64)
-                            .map_or(false, |exp| {
+                            .is_some_and(|exp| {
                                 let now = Utc::now().timestamp();
                                 exp <= now + 3600 && now + 3600 <= exp + 60
                             })
@@ -948,7 +948,7 @@ mod tests {
                             .claims
                             .get("jti")
                             .and_then(Value::as_str)
-                            .map_or(false, |jti| !jti.is_empty())
+                            .is_some_and(|jti| !jti.is_empty())
                 })
                 .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                     "access_token": "some_access_token",

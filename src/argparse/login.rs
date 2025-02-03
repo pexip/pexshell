@@ -56,9 +56,9 @@ impl Login {
             )
     }
 
-    pub async fn run<'a>(
+    pub async fn run(
         &self,
-        pexshell: &mut PexShell<'a>,
+        pexshell: &mut PexShell<'_>,
         config: &mut ConfigManager,
         client: reqwest::Client,
         login_sub: &ArgMatches,

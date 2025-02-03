@@ -27,7 +27,7 @@ impl Cache {
             )
     }
 
-    pub async fn run<'a>(
+    pub async fn run(
         &self,
         config: &mut impl ConfigProvider,
         cache_dir: &Path,
