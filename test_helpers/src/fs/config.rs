@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use googletest::prelude::*;
+use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::*;
 use p256::{ecdsa, pkcs8::LineEnding};
-use rand::rngs::OsRng;
 use serde::Serialize;
 use toml::{self, Value};
 
