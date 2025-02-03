@@ -261,20 +261,13 @@ pub async fn read_all_schemas(
     Ok(all_schemas)
 }
 
-pub async fn cache_schemas<'auth>(
-    api_client: &ApiClient<'auth>,
-    cache_dir: &Path,
-) -> anyhow::Result<()> {
+pub async fn cache_schemas(api_client: &ApiClient<'_>, cache_dir: &Path) -> anyhow::Result<()> {
     join_all_results(Api::iter().map(|api| cache_api(api_client, cache_dir, api))).await?;
 
     Ok(())
 }
 
-async fn cache_api<'auth>(
-    api_client: &ApiClient<'auth>,
-    cache_dir: &Path,
-    api: Api,
-) -> anyhow::Result<()> {
+async fn cache_api(api_client: &ApiClient<'_>, cache_dir: &Path, api: Api) -> anyhow::Result<()> {
     let root_request = ApiRequest::ApiSchema { api };
     let json = api_client
         .send(root_request)
@@ -294,8 +287,8 @@ async fn cache_api<'auth>(
     Ok(())
 }
 
-async fn cache_schema<'auth>(
-    api_client: &ApiClient<'auth>,
+async fn cache_schema(
+    api_client: &ApiClient<'_>,
     cache_dir: &Path,
     api: Api,
     endpoint: &str,
