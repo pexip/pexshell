@@ -10,7 +10,7 @@ license = "BSD-3-Clause"
 [workspace.dependencies]
 anyhow = "1.0"
 async-stream = "0.3.6"
-async-trait = "0.1.83"
+async-trait = "0.1.86"
 chrono = { version = "0.4.38", features = [
     "std",
     "clock",
