@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::Header;
 use log::debug;
-use rand::Rng;
+use rand::{Rng, TryRngCore};
 use serde::ser::SerializeStruct;
 use tokio::sync::Mutex;
 
@@ -90,8 +90,8 @@ impl<'callback> OAuth2<'callback> {
     }
 
     fn generate_token_id() -> String {
-        let mut rng = rand::rngs::OsRng;
-        let bytes: [u8; 18] = rng.gen();
+        let mut rng = rand::rngs::OsRng.unwrap_err(); // Panic on OS-level RNG failure
+        let bytes: [u8; 18] = rng.random();
         hex::encode(bytes)
     }
 
