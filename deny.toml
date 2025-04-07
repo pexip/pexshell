@@ -19,7 +19,7 @@ skip-tree = [
     { name = "rustix", version = "*" },
     { name = "security-framework", version = "2.11.1" }, # keyring uses old version
     { name = "thiserror", version = "1.0" },             # dialoguer uses old version
-    { name = "getrandom", version = "0.2.15" },          # rand uses old version
+    { name = "rand", version = "0.8.5" },                # p256 uses old version
 ]
 
 [sources]
