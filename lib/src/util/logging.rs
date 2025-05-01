@@ -50,7 +50,7 @@ impl SimpleLogger {
 
     pub fn set_max_level(&self, max_level: LevelFilter) {
         *self.max_level.write() = max_level;
-        debug!("Set log level to {}", max_level);
+        debug!("Set log level to {max_level}");
     }
 
     /// Sets the output file used by the logger.

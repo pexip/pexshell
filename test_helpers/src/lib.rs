@@ -17,13 +17,12 @@ pub mod logging;
 use std::{
     io::Write,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use fs::{Configurer, RootSchemaBuilder, SchemaBuilder};
 use log::{info, warn, LevelFilter};
 use logging::{TestLogger, TestLoggerContext, TestLoggerPermit};
-use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
@@ -69,7 +68,7 @@ impl VirtualFile {
         }
     }
 
-    #[allow(clippy::must_use_candidate)]
+    #[expect(clippy::must_use_candidate)]
     pub fn take(&self) -> String {
         let mut buffer = self.buffer.lock();
         let mut other = String::new();
@@ -102,6 +101,7 @@ enum CleanUpMode {
     #[default]
     NotOnPanic,
     Always,
+    #[cfg_attr(feature = "ci", expect(dead_code))]
     Never,
 }
 
@@ -128,7 +128,7 @@ pub struct TestContext {
     stdout_buffer: Arc<Mutex<String>>,
     stderr_buffer: Arc<Mutex<String>>,
     logging_permit: Mutex<Option<TestLoggerPermit<'static>>>,
-    logging_context: OnceCell<TestLoggerContext<'static>>,
+    logging_context: OnceLock<TestLoggerContext<'static>>,
 }
 
 impl Drop for TestContext {
@@ -175,7 +175,7 @@ impl TestContext {
             stdout_buffer,
             stderr_buffer,
             logging_permit: Mutex::new(Some(LOGGER.get_permit())),
-            logging_context: OnceCell::new(),
+            logging_context: OnceLock::new(),
         }
     }
 
@@ -299,7 +299,6 @@ impl TestContext {
         RootSchemaBuilder::new(self, api_path)
     }
 
-    #[allow(clippy::unused_self)]
     pub fn logger(&self) -> &TestLoggerContext {
         self.logging_context
             .get_or_init(|| self.logging_permit.lock().take().unwrap().promote())

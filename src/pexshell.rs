@@ -161,7 +161,7 @@ impl<'a> PexShell<'a> {
                 writeln!(self.console, "{location}").unwrap();
             }
             ApiResponse::Nothing => (),
-        };
+        }
 
         drop(api_client);
 

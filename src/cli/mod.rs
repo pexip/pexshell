@@ -2,6 +2,7 @@ pub mod login;
 
 use std::collections::HashMap;
 use std::io::Write;
+use std::sync::LazyLock;
 
 use clap::{ArgAction, ArgMatches, Command};
 use colored_json::to_colored_json_auto as to_coloured_json_auto;
@@ -11,7 +12,6 @@ use lib::mcu::{
     Api,
 };
 use log::{debug, warn};
-use once_cell::sync::Lazy;
 use serde_json::{json, Map, Value};
 
 pub struct Console {
@@ -45,10 +45,10 @@ impl Console {
     }
 
     pub fn display_warning(&mut self, message: &str) {
-        static STYLE: Lazy<console::Style> =
-            Lazy::new(|| console::Style::new().fg(console::Color::Yellow));
+        static STYLE: LazyLock<console::Style> =
+            LazyLock::new(|| console::Style::new().fg(console::Color::Yellow));
 
-        warn!("Displaying warning: {}", message);
+        warn!("Displaying warning: {message}");
 
         writeln!(
             self.stderr,
@@ -115,7 +115,7 @@ pub fn generate_subcommands(schemas: &HashMap<Api, HashMap<String, Endpoint>>) -
     commands
 }
 
-#[allow(clippy::option_if_let_else)]
+#[expect(clippy::option_if_let_else)]
 fn generate_parser_for_field(
     _name: &str,
     field: &Field,
@@ -420,7 +420,7 @@ fn parse_arg_to_json(args: &ArgMatches, name: &str, field: &Field) -> Option<Val
 }
 
 #[cfg(test)]
-#[allow(clippy::cognitive_complexity)]
+#[expect(clippy::cognitive_complexity)]
 mod tests {
     use std::collections::{HashMap, HashSet};
 

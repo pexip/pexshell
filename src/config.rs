@@ -80,7 +80,7 @@ pub struct User {
     #[serde(flatten)]
     credentials: Credentials,
     #[serde(default, skip_serializing_if = "Not::not")]
-    #[allow(clippy::struct_field_names)]
+    #[expect(clippy::struct_field_names)]
     pub current_user: bool,
     #[serde(with = "ts_seconds_option", default)]
     pub last_used: Option<DateTime<Utc>>,
@@ -112,7 +112,6 @@ impl User {
         }
     }
 
-    #[allow(dead_code)]
     pub fn unique_id(&self) -> String {
         let credential = self.credentials.unique_id();
         let address = &self.address;
@@ -1399,7 +1398,7 @@ current_user = true
         );
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     #[test]
     fn test_add_oauth2_user_with_credential_store_no_token() {
         // Arrange
@@ -1522,7 +1521,7 @@ current_user = true
         );
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     #[test]
     fn test_add_oauth2_user_with_credential_store_with_token() {
         // Arrange

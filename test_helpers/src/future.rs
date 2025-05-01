@@ -6,7 +6,7 @@ use std::{
 
 type FutureFn<'a, T> = Box<dyn Fn(&mut Context<'_>) -> Poll<T> + 'a + Send + Sync>;
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct MockFuture<'a, T> {
     when_polled: FutureFn<'a, T>,
 }

@@ -119,7 +119,7 @@ fn json_response() -> serde_json::Value {
     })
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn json_schema() -> serde_json::Value {
     json!({
         "allowed_detail_http_methods": [

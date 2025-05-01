@@ -47,7 +47,6 @@ pub struct TestLoggerContext<'a> {
 }
 
 impl TestLoggerContext<'_> {
-    #[allow(dead_code)]
     pub fn get_config(&self) -> RwLockReadGuard<TestLoggerConfig> {
         self.test_logger.get_config()
     }
@@ -127,7 +126,6 @@ impl TestLogger {
         }
     }
 
-    #[allow(dead_code)]
     fn get_config(&self) -> RwLockReadGuard<TestLoggerConfig> {
         self.config.read()
     }
@@ -140,7 +138,7 @@ impl TestLogger {
         self.expectations.lock().push(Box::new(expectation));
     }
 
-    #[allow(clippy::significant_drop_tightening)]
+    #[expect(clippy::significant_drop_tightening)]
     fn verify(&self) {
         let expectations = self.expectations.lock();
         if expectations.is_empty() {

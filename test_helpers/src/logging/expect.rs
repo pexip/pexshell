@@ -731,8 +731,8 @@ mod tests {
         assert_that!(all.matches(&record), eq(match_result));
     }
 
-    #[allow(clippy::cognitive_complexity)]
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::cognitive_complexity)]
+    #[expect(clippy::too_many_lines)]
     #[test]
     fn test_sequences() {
         let r_info = Record::builder().level(log::Level::Info).build();

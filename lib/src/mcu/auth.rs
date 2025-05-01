@@ -28,7 +28,6 @@ pub trait ApiClientAuth: Send + Sync {
     ) -> anyhow::Result<reqwest::RequestBuilder>;
 }
 
-#[allow(opaque_hidden_inferred_bound)]
 #[async_trait]
 pub trait AuthWith: Send + Sized {
     async fn auth_with<Auth: ApiClientAuth + ?Sized>(self, auth: &Auth) -> anyhow::Result<Self>;

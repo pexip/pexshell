@@ -200,7 +200,7 @@ impl<'auth> ApiClient<'auth> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     async fn build_request(&self, request: ApiRequest) -> anyhow::Result<reqwest::Request> {
         match request {
             ApiRequest::Get {
@@ -354,7 +354,7 @@ impl<'auth> ApiClient<'auth> {
                 } else {
                     let contents = response.text().await;
 
-                    #[allow(clippy::option_if_let_else)]
+                    #[expect(clippy::option_if_let_else)]
                     let error_message = match contents {
                         Ok(contents) if !contents.is_empty() => {
                             if let Ok(json_error) = serde_json::from_str::<JsonError>(&contents) {
@@ -483,7 +483,6 @@ struct JsonError {
     error: String,
 }
 
-#[allow(clippy::no_effect_underscore_binding)]
 #[async_trait]
 impl IApiClient for ApiClient<'_> {
     async fn send<'a>(&'a self, request: ApiRequest) -> anyhow::Result<ApiResponse<'a>> {
@@ -516,14 +515,14 @@ impl IApiClient for ApiClient<'_> {
                 .acquire()
                 .await
                 .expect("semaphore should never be closed");
-            trace!("--> {} {}", method, url);
+            trace!("--> {method} {url}");
             let response = Self::handle_api_errors(self.http_client.execute(request).await).await?;
             let response_code = response.status();
 
             let location = response.headers().get("Location").cloned();
 
             let response_text = response.text().await?;
-            trace!("<-- {} {}", method, url);
+            trace!("<-- {method} {url}");
             if !response_text.is_empty() {
                 if is_command {
                     Ok(ApiResponse::Nothing)
@@ -642,7 +641,7 @@ impl ApiResponse<'_> {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize, Debug)]
 struct Meta {
     limit: usize,

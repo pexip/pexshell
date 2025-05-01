@@ -14,7 +14,6 @@ googletest.workspace = true
 http.workspace = true
 jsonwebtoken.workspace = true
 log.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 p256 = "0.13.2"
 rand.workspace = true

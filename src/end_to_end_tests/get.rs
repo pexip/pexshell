@@ -65,7 +65,6 @@ async fn get_conference_config() {
     );
 }
 
-#[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn get_conference_config_oauth2() {
     // Arrange

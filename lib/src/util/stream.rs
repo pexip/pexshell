@@ -2,7 +2,6 @@ use std::pin::Pin;
 
 use futures::{executor::BlockingStream, Stream};
 
-#[allow(clippy::module_name_repetitions)]
 pub struct StreamWrapper<'a, T> {
     inner: Pin<Box<dyn Stream<Item = T> + Send + 'a>>,
 }

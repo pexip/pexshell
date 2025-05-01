@@ -30,7 +30,7 @@ enum TokenType {
 struct TokenResponse {
     access_token: SensitiveString,
     expires_in: i64,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     token_type: TokenType,
 }
 
@@ -65,7 +65,6 @@ pub struct OAuth2<'callback> {
     /// Private key (ES256)
     client_key: SensitiveString,
     token: Mutex<Option<AuthToken>>,
-    #[allow(clippy::type_complexity)]
     token_callback: Box<dyn Fn(&AuthToken) + Send + Sync + 'callback>,
 }
 
@@ -220,7 +219,7 @@ mod tests {
         assert_that!(token_id.len(), eq(36));
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     #[tokio::test]
     async fn auth_with() {
         let server = MockServer::start().await;
