@@ -185,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::redundant_clone)]
+    #[expect(clippy::redundant_clone)]
     fn test_clone() {
         let sensitive_string = SensitiveString::from("Testing");
         let dup = sensitive_string.clone();

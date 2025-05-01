@@ -96,7 +96,7 @@ impl Login {
                 .await?;
 
             config.write_to_file()?;
-        };
+        }
         Ok(())
     }
 }

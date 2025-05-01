@@ -137,14 +137,13 @@ pub fn auth_for_user<'config>(
                     token: t.access_token,
                     expires_at: t.expiry,
                 }),
-                #[allow(clippy::significant_drop_tightening)]
                 move |token| {
                     let mut state = state.lock();
                     let (ref mut config, ref mut user) = *state;
                     if let Err(e) =
                         config.set_oauth2_token(user, token, save_credentials_if_changed)
                     {
-                        error!("failed to save OAuth2 token: {}", e);
+                        error!("failed to save OAuth2 token: {e}");
                     }
                 },
             )))
@@ -293,7 +292,7 @@ impl<Backend: Interact> Login<Backend> {
         config::User::new_oauth2(address, client_id, client_cert)
     }
 
-    #[allow(clippy::unused_self, clippy::needless_pass_by_ref_mut)]
+    #[expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)]
     pub fn list_users(&mut self, console: &mut Console, config: &impl config::Configurer) {
         let mut output = String::new();
         for user in config.get_users() {
@@ -660,7 +659,7 @@ mod tests {
             .unwrap();
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     #[tokio::test]
     async fn test_select_user_add_and_verify() {
         // Arrange
@@ -864,7 +863,7 @@ mod tests {
             .unwrap();
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     #[tokio::test]
     async fn test_oauth2_add_and_verify() {
         // Arrange

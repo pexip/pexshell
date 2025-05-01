@@ -24,7 +24,7 @@ struct User {
     client_id: Option<String>,
     private_key: Option<String>,
     token: Option<OAuth2Token>,
-    #[allow(clippy::struct_field_names)]
+    #[expect(clippy::struct_field_names)]
     current_user: bool,
     #[serde(with = "ts_seconds_option", default)]
     pub last_used: Option<DateTime<Utc>>,

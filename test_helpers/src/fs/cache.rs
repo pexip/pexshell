@@ -63,7 +63,7 @@ impl RootSchemaBuilder {
     }
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 #[skip_serializing_none]
 #[derive(Clone, Serialize)]
 struct Field {
@@ -74,7 +74,7 @@ struct Field {
     readonly: bool,
     related_type: Option<String>,
     #[serde(rename = "type")]
-    #[allow(clippy::struct_field_names)]
+    #[expect(clippy::struct_field_names)]
     field_type: String,
     unique: bool,
     valid_choices: Option<Vec<Value>>,

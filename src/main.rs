@@ -25,12 +25,11 @@ use lib::{
     util::SimpleLogger,
 };
 use log::{error, warn, LevelFilter};
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde_json::Value;
 #[cfg(unix)]
 use simple_signal::Signal;
-use std::{collections::HashMap, path::PathBuf, process::ExitCode};
+use std::{collections::HashMap, path::PathBuf, process::ExitCode, sync::LazyLock};
 use tokio::io::AsyncReadExt;
 
 #[cfg(unix)]
@@ -38,10 +37,10 @@ use crate::consts::EXIT_CODE_INTERRUPTED;
 
 static ABORT_ON_INTERRUPT: RwLock<bool> = RwLock::new(true);
 
-static LOGGER: Lazy<SimpleLogger> = Lazy::new(|| {
+static LOGGER: LazyLock<SimpleLogger> = LazyLock::new(|| {
     SimpleLogger::new(None).expect("creating a logger without a file should not fail")
 });
-static VERSION: Lazy<String> = Lazy::new(pexshell_version);
+static VERSION: LazyLock<String> = LazyLock::new(pexshell_version);
 
 /// Equivalent of `git describe --dirty=-modified | sed 's/-g/-/'`
 fn pexshell_version() -> String {
@@ -53,7 +52,7 @@ fn pexshell_version() -> String {
         .to_owned()
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn api_request_from_matches(
     matches: &ArgMatches,
     schemas: &HashMap<Api, HashMap<String, schema::Endpoint>>,
@@ -179,7 +178,7 @@ fn api_request_from_matches(
     Ok(api_request)
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 async fn read_stdin_to_json() -> anyhow::Result<Option<Value>> {
     let mut contents = String::new();
     let _bytes_read = tokio::io::stdin().read_to_string(&mut contents).await?;
@@ -243,7 +242,7 @@ async fn main() -> ExitCode {
 
     if let Err(e) = result {
         if let Some(code) = e.downcast_ref::<pexshell::ExitCode>() {
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             return ExitCode::from(code.code() as u8);
         }
 
@@ -262,7 +261,7 @@ async fn main() -> ExitCode {
 }
 
 #[cfg(test)]
-#[allow(clippy::implicit_hasher)]
+#[expect(clippy::implicit_hasher)]
 pub async fn run_with(
     args: &[String],
     env: HashMap<String, String>,

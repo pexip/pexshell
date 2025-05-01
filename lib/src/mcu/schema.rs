@@ -30,7 +30,6 @@ pub struct Root {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-#[allow(clippy::module_name_repetitions)]
 pub struct Endpoint {
     pub allowed_detail_http_methods: HashSet<Methods>,
     pub allowed_list_http_methods: HashSet<Methods>,
@@ -43,7 +42,7 @@ pub struct Endpoint {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct Field {
     pub blank: bool,
     pub default: Option<Value>,
@@ -178,7 +177,7 @@ impl<'de> Visitor<'de> for FilteringItemVisitor {
 /// Will panic if retrieving a valid cache directory from the operating system fails.
 #[must_use]
 pub fn cache_exists(cache_dir: &Path) -> bool {
-    debug!("Checking for schema cache in {:?}", cache_dir);
+    debug!("Checking for schema cache in {cache_dir:?}");
     if cache_dir.exists()
         && cache_dir
             .read_dir()
@@ -221,7 +220,7 @@ pub async fn read_schema_from_cache(
     endpoint: &str,
 ) -> std::io::Result<Endpoint> {
     let path = get_endpoint_cache_path(cache_dir, api, endpoint);
-    trace!("Reading schema from cache file: {:?}", path);
+    trace!("Reading schema from cache file: {path:?}");
     let schema = tokio::fs::read_to_string(path).await?;
     let schema: Endpoint = serde_json::from_str(&schema)?;
     Ok(schema)
@@ -495,7 +494,7 @@ mod tests {
         std::fs::remove_dir_all(cache_path).unwrap();
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn json_schema() -> serde_json::Value {
         json!({
             "allowed_detail_http_methods": [

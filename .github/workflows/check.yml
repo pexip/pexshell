@@ -19,7 +19,7 @@ jobs:
         with:
           cache-id: clippy
       - name: Clippy
-        run: cargo clippy --workspace --locked --tests
+        run: cargo clippy --workspace --locked --all-features --all-targets
 
   fmt:
     runs-on: ubuntu-latest
