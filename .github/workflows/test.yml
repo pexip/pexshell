@@ -59,5 +59,7 @@ jobs:
           cargo-install: cargo-nextest
       - name: Build
         run: cargo build --workspace --locked --verbose
-      - name: Test
+      - name: Run Tests
         run: cargo nextest run --workspace --locked
+      - name: Run Doctests
+        run: cargo test --workspace --locked --doc

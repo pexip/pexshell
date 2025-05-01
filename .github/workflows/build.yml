@@ -31,8 +31,10 @@ jobs:
           rust-targets: ${{ matrix.target }}
       - name: Build
         run: cargo build --workspace --release --locked --verbose --target ${{ matrix.target }}
-      - name: Test
+      - name: Run Tests
         run: cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
+      - name: Run Doctests
+        run: cargo test --workspace --release --locked --target ${{ matrix.target }} --doc
       - uses: ./.github/actions/upload-artifact
         with:
           artifact-name: ${{ matrix.target }}
