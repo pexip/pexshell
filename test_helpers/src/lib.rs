@@ -1,8 +1,3 @@
-#![deny(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-//#![warn(clippy::cargo)]
-#![allow(clippy::wildcard_imports)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::redundant_pub_crate)]
@@ -136,6 +131,10 @@ impl Drop for TestContext {
         if !self.test_dir.exists() {
             return;
         }
+        #[expect(
+            clippy::unnecessary_debug_formatting,
+            reason = "debug formatting is intentional to clearly indicate the path in logs"
+        )]
         match self.clean_up {
             CleanUpMode::NotOnPanic if std::thread::panicking() => {
                 warn!(
@@ -317,6 +316,10 @@ impl TestContext {
     /// Gets the contents of the stdout buffer, simultaneously clearing it.
     pub fn take_stdout(&self) -> String {
         let mut stdout = String::new();
+        #[expect(
+            clippy::swap_with_temporary,
+            reason = "false positive - dropping the mutex guard does not drop the underlying value"
+        )]
         std::mem::swap(&mut stdout, &mut self.stdout_buffer.lock());
         stdout
     }
@@ -324,6 +327,10 @@ impl TestContext {
     /// Gets the contents of the stderr buffer, simultaneously clearing it.
     pub fn take_stderr(&self) -> String {
         let mut stderr = String::new();
+        #[expect(
+            clippy::swap_with_temporary,
+            reason = "false positive - dropping the mutex guard does not drop the underlying value"
+        )]
         std::mem::swap(&mut stderr, &mut self.stderr_buffer.lock());
         stderr
     }

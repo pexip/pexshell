@@ -14,7 +14,7 @@ fn test_expect_log() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Some logging expectations were not met")]
 fn test_expect_log_fails() {
     let test_context = get_test_context().always_clean_up();
     let test_logger = test_context.logger();

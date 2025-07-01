@@ -44,3 +44,6 @@ wiremock.workspace = true
 [features]
 all_logs = []
 test_util = ["dep:googletest"]
+
+[lints]
+workspace = true

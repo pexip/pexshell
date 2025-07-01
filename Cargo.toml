@@ -39,6 +39,11 @@ test-case = "3.3"
 uuid = { version = "1.16", features = ["v4"] }
 wiremock = "0.6.3"
 
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+unnecessary_debug_formatting = "allow"
+
 
 [package]
 name = "pexshell"
@@ -112,3 +117,6 @@ all_logs = ["lib/all_logs"]
 ci = ["test_helpers/ci"]
 rustls-native-certs = ["reqwest/rustls-tls-native-roots"]
 rustls = ["reqwest/rustls-tls"]
+
+[lints]
+workspace = true

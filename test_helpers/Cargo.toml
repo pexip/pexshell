@@ -34,3 +34,6 @@ test-case.workspace = true
 
 [features]
 ci = []
+
+[lints]
+workspace = true
