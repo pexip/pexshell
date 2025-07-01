@@ -1,6 +1,3 @@
-#![deny(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_const_for_fn)]
 

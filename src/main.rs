@@ -1,10 +1,3 @@
-#![deny(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-//#![warn(clippy::cargo)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_const_for_fn)]
-
 mod argparse;
 mod cli;
 mod config;
@@ -24,7 +17,7 @@ use lib::{
     mcu::{self, schema, Api},
     util::SimpleLogger,
 };
-use log::{error, warn, LevelFilter};
+use log::{error, LevelFilter};
 use parking_lot::RwLock;
 use serde_json::Value;
 #[cfg(unix)]
@@ -261,7 +254,7 @@ async fn main() -> ExitCode {
 }
 
 #[cfg(test)]
-#[expect(clippy::implicit_hasher)]
+#[expect(clippy::implicit_hasher, clippy::missing_errors_doc)]
 pub async fn run_with(
     args: &[String],
     env: HashMap<String, String>,

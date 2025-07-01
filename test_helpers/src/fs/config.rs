@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use googletest::prelude::*;
 use p256::elliptic_curve::rand_core::OsRng;
+#[allow(clippy::wildcard_imports)]
 use p256::pkcs8::*;
 use p256::{ecdsa, pkcs8::LineEnding};
 use serde::Serialize;

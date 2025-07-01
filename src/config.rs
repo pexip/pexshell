@@ -186,6 +186,7 @@ pub trait Provider: Send + Sync {
 /// Abstraction for accessing and modifying config.
 /// Does NOT take into account environment variables.
 pub trait Configurer: Send + Sync {
+    #[must_use]
     fn get_users(&self) -> &[User];
 
     /// Add a user to the users list.
@@ -625,7 +626,6 @@ impl Provider for Manager {
 }
 
 impl Configurer for Manager {
-    #[must_use]
     fn get_users(&self) -> &[User] {
         &self.config.users
     }
