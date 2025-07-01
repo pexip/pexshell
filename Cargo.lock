@@ -451,9 +451,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete_nushell"
-version = "4.5.5"
+version = "4.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6a8b1593457dfc2fe539002b795710d022dc62a65bf15023f039f9760c7b18a"
+checksum = "cdb8335b398d197fb3176efe9400c6c053a41733c26794316c73423d212b2f3d"
 dependencies = [
  "clap",
  "clap_complete",
