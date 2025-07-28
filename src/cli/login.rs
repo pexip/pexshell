@@ -210,8 +210,8 @@ impl<Backend: Interact> Login<Backend> {
         verify_credentials: bool,
         store_password_in_plaintext: bool,
     ) -> Result<(), lib::error::UserFriendly> {
-        let mut user_list: Vec<String> = config
-            .get_users()
+        let existing_users = config.get_users();
+        let mut user_list: Vec<String> = existing_users
             .iter()
             .map(|user| combine_username(user, local_timezone()))
             .collect();
@@ -222,7 +222,7 @@ impl<Backend: Interact> Login<Backend> {
                 "no stored api credentials found; add a new user to continue:"
             )
             .unwrap();
-            let mut user = self.input_basic_user();
+            let mut user = self.input_basic_user(existing_users)?;
 
             if verify_credentials {
                 test_request(client, config, &mut user).await?;
@@ -238,7 +238,7 @@ impl<Backend: Interact> Login<Backend> {
             let selection = self.interact.select("select a user", 0, &user_list);
 
             if user_list[selection] == ADD_A_USER_OPTION {
-                let mut user = self.input_basic_user();
+                let mut user = self.input_basic_user(existing_users)?;
 
                 if verify_credentials {
                     test_request(client, config, &mut user).await?;
@@ -277,14 +277,36 @@ impl<Backend: Interact> Login<Backend> {
         Ok(())
     }
 
-    pub fn input_basic_user(&mut self) -> config::User {
+    pub fn input_basic_user(
+        &mut self,
+        existing_users: &[config::User],
+    ) -> Result<config::User, lib::error::UserFriendly> {
         let input_address: String = self.interact.text("address");
 
         let input_username: String = self.interact.text("username");
 
+        let new_user_without_password = config::User::new(
+            input_address.clone(),
+            input_username.clone(),
+            SensitiveString::from(""),
+        );
+        if existing_users
+            .iter()
+            .any(|u| u.unique_id() == new_user_without_password.unique_id())
+        {
+            return Err(error::UserFriendly::new(
+                        "a user with the same address and username already exists; to update its credentials, \
+                        use `pexshell login --delete` to remove the existing user, then `pexshell login` to add it again",
+                    ));
+        }
+
         let input_password = self.interact.password("password");
 
-        config::User::new(input_address, input_username, input_password)
+        Ok(config::User::new(
+            input_address,
+            input_username,
+            input_password,
+        ))
     }
 
     pub fn input_oauth2_user(&mut self, address: String, client_id: String) -> config::User {
@@ -467,7 +489,7 @@ mod tests {
     }
 
     #[test]
-    fn test_input_user() {
+    fn test_input_user_succeeds() {
         // Arrange
         let backend = MockInteract::new();
         let mut login = Login::new(backend);
@@ -491,12 +513,12 @@ mod tests {
             .return_const(SensitiveString::from("some_password"));
 
         // Act
-        let user = login.input_basic_user();
+        let result = login.input_basic_user(&[]);
 
         // Assert
         assert_that!(
-            user,
-            matches_pattern!(User {
+            result,
+            ok(matches_pattern!(User {
                 address: eq("testing.test"),
                 credentials: pat!(Credentials::Basic(pat!(BasicCredentials {
                     username: eq("some_username"),
@@ -504,8 +526,43 @@ mod tests {
                 }))),
                 current_user: eq(&false),
                 last_used: none(),
-            })
+            }))
         );
+    }
+
+    #[test]
+    fn test_input_user_already_exists() {
+        // Arrange
+        let backend = MockInteract::new();
+        let mut login = Login::new(backend);
+        login
+            .interact
+            .expect_text()
+            .with(mp::eq("address"))
+            .once()
+            .return_const("testing.test");
+        login
+            .interact
+            .expect_text()
+            .with(mp::eq("username"))
+            .once()
+            .return_const("some_username");
+
+        // Act
+        let result = login.input_basic_user(&[User {
+            address: String::from("testing.test"),
+            credentials: Credentials::Basic(BasicCredentials {
+                username: String::from("some_username"),
+                password: Some(SensitiveString::from("some_password")),
+            }),
+            current_user: false,
+            last_used: None,
+        }]);
+
+        // Assert
+        assert_that!(result, err(displays_as(eq("a user with the same address and username already exists; to update \
+            its credentials, use `pexshell login --delete` to remove the existing user, then `pexshell login` to add \
+            it again"))));
     }
 
     #[test]
