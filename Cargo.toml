@@ -19,7 +19,7 @@ chrono = { version = "0.4.41", features = [
 console = "0.15.11" # colour stderr logging
 futures = { version = "0.3.31", features = ["executor"] }
 googletest = "0.13.0"
-hyper = "1.6.0"
+hyper = "1.7.0"
 jsonwebtoken = "9.3"
 log = { version = "0.4.27", features = ["std", "serde"] }
 parking_lot = "0.12.4"
