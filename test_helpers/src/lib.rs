@@ -298,7 +298,7 @@ impl TestContext {
         RootSchemaBuilder::new(self, api_path)
     }
 
-    pub fn logger(&self) -> &TestLoggerContext {
+    pub fn logger(&'_ self) -> &'_ TestLoggerContext<'_> {
         self.logging_context
             .get_or_init(|| self.logging_permit.lock().take().unwrap().promote())
     }
@@ -316,10 +316,6 @@ impl TestContext {
     /// Gets the contents of the stdout buffer, simultaneously clearing it.
     pub fn take_stdout(&self) -> String {
         let mut stdout = String::new();
-        #[expect(
-            clippy::swap_with_temporary,
-            reason = "false positive - dropping the mutex guard does not drop the underlying value"
-        )]
         std::mem::swap(&mut stdout, &mut self.stdout_buffer.lock());
         stdout
     }
@@ -327,10 +323,6 @@ impl TestContext {
     /// Gets the contents of the stderr buffer, simultaneously clearing it.
     pub fn take_stderr(&self) -> String {
         let mut stderr = String::new();
-        #[expect(
-            clippy::swap_with_temporary,
-            reason = "false positive - dropping the mutex guard does not drop the underlying value"
-        )]
         std::mem::swap(&mut stderr, &mut self.stderr_buffer.lock());
         stderr
     }
