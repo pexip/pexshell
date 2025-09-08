@@ -47,11 +47,11 @@ pub struct TestLoggerContext<'a> {
 }
 
 impl TestLoggerContext<'_> {
-    pub fn get_config(&self) -> RwLockReadGuard<TestLoggerConfig> {
+    pub fn get_config(&'_ self) -> RwLockReadGuard<'_, TestLoggerConfig> {
         self.test_logger.get_config()
     }
 
-    pub fn get_config_mut(&self) -> RwLockWriteGuard<TestLoggerConfig> {
+    pub fn get_config_mut(&'_ self) -> RwLockWriteGuard<'_, TestLoggerConfig> {
         self.test_logger.get_config_mut()
     }
 
@@ -109,7 +109,7 @@ impl TestLogger {
     ///
     /// Note that calling this function will cause a deadlock if the thread already holds a [`TestLoggerPermit`]!
     /// In this case, you should instead call `TestLoggerPermit::promote`.
-    pub fn get_context(&self) -> TestLoggerContext {
+    pub fn get_context(&'_ self) -> TestLoggerContext<'_> {
         TestLoggerContext {
             test_logger: self,
             _guard: self.test_lock.write(),
@@ -119,18 +119,18 @@ impl TestLogger {
     /// Grants permission to log to this [`TestLogger`].
     /// Can be promoted to a [`TestLoggerContext`] to provide exclusive access to the [`TestLogger`]
     /// for setting expectations.
-    pub fn get_permit(&self) -> TestLoggerPermit {
+    pub fn get_permit(&'_ self) -> TestLoggerPermit<'_> {
         TestLoggerPermit {
             test_logger: self,
             guard: self.test_lock.read(),
         }
     }
 
-    fn get_config(&self) -> RwLockReadGuard<TestLoggerConfig> {
+    fn get_config(&'_ self) -> RwLockReadGuard<'_, TestLoggerConfig> {
         self.config.read()
     }
 
-    fn get_config_mut(&self) -> RwLockWriteGuard<TestLoggerConfig> {
+    fn get_config_mut(&'_ self) -> RwLockWriteGuard<'_, TestLoggerConfig> {
         self.config.write()
     }
 
