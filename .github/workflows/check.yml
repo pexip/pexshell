@@ -18,6 +18,7 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: clippy
+          rust-components: clippy
       - name: Clippy
         run: cargo clippy --workspace --locked --all-features --all-targets
 
@@ -30,6 +31,7 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           cache-id: nobuild
+          rust-components: rustfmt
       - name: Check formatting
         run: rustc --version && cargo --version && cargo fmt --all --check
 
