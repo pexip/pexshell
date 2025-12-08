@@ -38,15 +38,14 @@ fn local_timezone() -> &'static impl TimeZone<Offset = impl Offset + Display> {
 pub trait Interact: Send {
     fn text(&mut self, prompt: &str) -> String;
     fn password(&mut self, prompt: &str) -> SensitiveString;
-    fn select<T: ToString + 'static>(&mut self, prompt: &str, default: usize, items: &[T])
-        -> usize;
+    fn select<T: Display + 'static>(&mut self, prompt: &str, default: usize, items: &[T]) -> usize;
     fn read_to_end(&mut self) -> String;
 }
 
 pub struct Interactive {}
 
 impl Interact for Interactive {
-    fn select<T: ToString>(&mut self, prompt: &str, default: usize, items: &[T]) -> usize {
+    fn select<T: Display>(&mut self, prompt: &str, default: usize, items: &[T]) -> usize {
         set_abort_on_interrupt(false);
         let result = FuzzySelect::with_theme(&ColourfulTheme::default())
             .with_prompt(prompt)
