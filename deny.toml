@@ -11,11 +11,13 @@ wildcards = "deny"
 allow-wildcard-paths = true
 highlight = "all"
 # Certain crates/versions that will be skipped when doing duplicate detection.
-skip = []
+skip = [
+    { name = "untrusted", version = "0.7.1" }, # old version used by aws-lc-rs, used by jsonwebtoken
+]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [
+    { name = "rand_core", version = "0.6.4" },           # Old version used by several crates
     { name = "security-framework", version = "2.11.1" }, # keyring uses old version
-    { name = "rand", version = "0.8.5" },                # p256 uses old version
     { name = "windows-sys", version = "*" },             # multiple crates use old versions - no stable release yet, so this is inevitable
 ]
 
