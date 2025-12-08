@@ -24,9 +24,10 @@ use crate::util;
 
 use self::auth::{ApiClientAuth, AuthWith};
 
-#[derive(EnumIter, Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
+#[derive(EnumIter, Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum CommandApi {
+    #[default]
     Conference,
     Participant,
     Platform,
@@ -106,12 +107,6 @@ pub enum RequestType {
     Post,
     Update,
     Delete,
-}
-
-impl Default for CommandApi {
-    fn default() -> Self {
-        Self::Conference
-    }
 }
 
 #[async_trait]
