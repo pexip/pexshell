@@ -14,6 +14,18 @@ path = "LICENSE-MIT"
 license = "MIT"
 checksum = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
 
+[aws-lc-sys]
+accepted = ["Apache-2.0", "ISC", "OpenSSL"]
+
+[aws-lc-sys.clarify]
+license = "ISC AND (Apache-2.0 OR ISC) AND OpenSSL"
+
+[[aws-lc-sys.clarify.files]]
+path = "LICENSE"
+license = "OpenSSL"
+checksum = "5df09a98cac8843239a4d8f48a85089de6b68ed106612afcd2aa37a6453c2e3f"
+
+
 [bstr.clarify]
 license = "MIT OR Apache-2.0"
 
@@ -66,12 +78,12 @@ license = "MIT OR Apache-2.0"
 [[time.clarify.files]]
 path = "LICENSE-Apache"
 license = "Apache-2.0"
-checksum = "edd65bdd88957a205c47d53fa499eed8865a70320f0f03f6391668cb304ea376"
+checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
 
 [[time.clarify.files]]
 path = "LICENSE-MIT"
 license = "MIT"
-checksum = "231c837c45eb53f108fb48929e488965bc4fcc14e9ea21d35f50e6b99d98685b"
+checksum = "2537228d9a1b44a5dc595241349cae7090b326c8de165aaf89bfddef4a00d0fc"
 
 [typenum.clarify]
 license = "MIT OR Apache-2.0"
