@@ -969,7 +969,7 @@ mod tests {
                     jwt_validation.set_issuer(&["some_client_id"]);
 
                     let Ok(jwt) = jsonwebtoken::decode::<Value>(
-                        client_assertion,
+                        client_assertion.as_bytes(),
                         &server_key,
                         &jwt_validation,
                     ) else {

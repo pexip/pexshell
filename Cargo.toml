@@ -4,7 +4,7 @@ members = ["lib", "test_helpers"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.81"
+rust-version = "1.85"
 license = "BSD-3-Clause"
 
 [workspace.dependencies]
@@ -20,7 +20,7 @@ console = "0.16.1" # colour stderr logging
 futures = { version = "0.3.31", features = ["executor"] }
 googletest = "0.14.2"
 hyper = "1.8.1"
-jsonwebtoken = "9.3"
+jsonwebtoken = { version = "10.2", features = ["rust_crypto"] }
 log = { version = "0.4.29", features = ["std", "serde"] }
 parking_lot = "0.12.5"
 rand = "0.9.2"

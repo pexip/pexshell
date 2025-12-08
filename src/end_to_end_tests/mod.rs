@@ -1,4 +1,5 @@
 #![allow(clippy::significant_drop_tightening)]
+#![allow(clippy::too_many_lines)]
 
 use std::collections::HashMap;
 
@@ -119,7 +120,6 @@ fn json_response() -> serde_json::Value {
     })
 }
 
-#[expect(clippy::too_many_lines)]
 fn json_schema() -> serde_json::Value {
     json!({
         "allowed_detail_http_methods": [
