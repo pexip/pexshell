@@ -403,7 +403,7 @@ mod tests {
                 )]
             );
         } else {
-            assert_that!(log_lines, empty());
+            assert_that!(log_lines, is_empty());
         }
         std::fs::remove_file(log_path).unwrap();
     }

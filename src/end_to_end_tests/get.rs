@@ -105,9 +105,11 @@ async fn get_conference_config_oauth2() {
                 jwt_validation.set_audience(&[&endpoint]);
                 jwt_validation.set_issuer(&["test_client_id"]);
 
-                let Ok(jwt) =
-                    jsonwebtoken::decode::<Value>(client_assertion, &server_key, &jwt_validation)
-                else {
+                let Ok(jwt) = jsonwebtoken::decode::<Value>(
+                    client_assertion.as_bytes(),
+                    &server_key,
+                    &jwt_validation,
+                ) else {
                     return false;
                 };
 

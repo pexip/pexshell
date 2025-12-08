@@ -33,7 +33,7 @@ tokio = { workspace = true, features = ["fs"] }
 zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-derive_more = { version = "2.0.1", features = ["display", "error"] }
+derive_more = { version = "2.1.0", features = ["display", "error"] }
 googletest.workspace = true
 test-case.workspace = true
 test_helpers = { path = "../test_helpers" }

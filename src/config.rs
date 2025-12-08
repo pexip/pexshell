@@ -840,7 +840,7 @@ mod tests {
 
         // Assert
         let config = result.unwrap().config;
-        assert_that!(config.users, empty());
+        assert_that!(config.users, is_empty());
         assert_that!(config.log, none());
     }
 
