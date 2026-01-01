@@ -16,7 +16,7 @@ chrono = { version = "0.4.42", features = [
     "clock",
     "serde",
 ], default-features = false } # for timestamps
-console = "0.16.1" # colour stderr logging
+console = "0.16.2" # colour stderr logging
 futures = { version = "0.3.31", features = ["executor"] }
 googletest = "0.14.2"
 hyper = "1.8.1"
