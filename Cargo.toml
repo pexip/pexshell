@@ -20,7 +20,7 @@ console = "0.16.2" # colour stderr logging
 futures = { version = "0.3.31", features = ["executor"] }
 googletest = "0.14.2"
 hyper = "1.8.1"
-jsonwebtoken = { version = "10.2", features = ["aws_lc_rs"] }
+jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
 log = { version = "0.4.29", features = ["std", "serde"] }
 parking_lot = "0.12.5"
 rand = "0.9.2"
