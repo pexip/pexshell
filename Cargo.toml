@@ -17,7 +17,7 @@ chrono = { version = "0.4.43", features = [
     "serde",
 ], default-features = false } # for timestamps
 console = "0.16.2" # colour stderr logging
-futures = { version = "0.3.31", features = ["executor"] }
+futures = { version = "0.3.32", features = ["executor"] }
 googletest = "0.14.2"
 hyper = "1.8.1"
 jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
