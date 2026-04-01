@@ -27,7 +27,7 @@ rand = "0.9.2"
 reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.16"
+serde_with = "3.18"
 tokio = "1.48"
 toml = "0.9.10"
 url = { version = "2.5", features = ["serde"] }
