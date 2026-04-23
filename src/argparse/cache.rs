@@ -37,7 +37,7 @@ impl Cache {
         if cache_matches.get_flag("clear") {
             info!("Clearing cache...");
             clear_cache(cache_dir)
-                .map_err(|err| error::UserFriendly::new(format!("error clearing cache: {err}",)))?;
+                .map_err(|err| error::UserFriendly::new(format!("error clearing cache: {err}")))?;
 
             info!("Cache cleared.");
             eprintln!("Cache cleared.");

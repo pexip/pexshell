@@ -332,8 +332,8 @@ fn generate_patch_field_arg<'a>(name: &'a str, field: &'a Field) -> Option<clap:
 pub fn create_get_filters(endpoint: &Endpoint, args: &ArgMatches) -> HashMap<String, String> {
     endpoint
         .fields
-        .iter()
-        .flat_map(|(name, _field)| {
+        .keys()
+        .flat_map(|name| {
             get_filter_args(
                 name.as_str(),
                 endpoint.filtering.get(name).unwrap_or(&Vec::new()),
