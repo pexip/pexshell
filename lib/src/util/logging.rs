@@ -68,7 +68,7 @@ impl SimpleLogger {
                         format!("Log file changed - subsequent logs will be written to: {path:?}")
                     },
                 );
-                log.write_all(format!("{timestamp} --- {message}\n",).as_bytes())
+                log.write_all(format!("{timestamp} --- {message}\n").as_bytes())
                     .expect("writing to log file failed");
             }
             config.log_file = match log_file {

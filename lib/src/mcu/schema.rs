@@ -178,12 +178,7 @@ impl<'de> Visitor<'de> for FilteringItemVisitor {
 #[must_use]
 pub fn cache_exists(cache_dir: &Path) -> bool {
     debug!("Checking for schema cache in {cache_dir:?}");
-    if cache_dir.exists()
-        && cache_dir
-            .read_dir()
-            .map(|mut i| i.next().is_some())
-            .unwrap_or(false)
-    {
+    if cache_dir.exists() && cache_dir.read_dir().is_ok_and(|mut i| i.next().is_some()) {
         debug!("Detected existing schema cache");
         true
     } else {

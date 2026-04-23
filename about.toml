@@ -1,4 +1,11 @@
-accepted = ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "Unicode-3.0"]
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-2-Clause",
+    "Unicode-3.0",
+    "BSD-3-Clause",
+]
 workarounds = ["ring", "chrono", "rustls"]
 
 [async-trait.clarify]
@@ -122,3 +129,6 @@ checksum = "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
 
 [rustls-webpki]
 accepted = ["BSD-3-Clause", "ISC", "NOASSERTION"]
+
+[webpki-root-certs]
+accepted = ["CDLA-Permissive-2.0"]

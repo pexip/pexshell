@@ -61,9 +61,7 @@ fn api_request_from_matches(
                 Ok((mcu::Api::Command(mcu::CommandApi::Conference), sub_m))
             }
             Some(("platform", sub_m)) => Ok((mcu::Api::Command(mcu::CommandApi::Platform), sub_m)),
-            o => Err(error::UserFriendly::new(
-                format!("Unrecognised API {o:?}!",),
-            )),
+            o => Err(error::UserFriendly::new(format!("Unrecognised API {o:?}!"))),
         },
         Some(("history", sub_m)) => Ok((mcu::Api::History, sub_m)),
         o => Err(error::UserFriendly::new(format!("unrecognised API {o:?}!"))),
