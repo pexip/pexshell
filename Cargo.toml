@@ -24,7 +24,7 @@ jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
 log = { version = "0.4.29", features = ["std", "serde"] }
 parking_lot = "0.12.5"
 rand = "0.10.1"
-reqwest = { version = "0.13.2", default-features = false, features = [
+reqwest = { version = "0.13.3", default-features = false, features = [
     "json",
     "form",
     "query",
