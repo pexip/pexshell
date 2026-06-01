@@ -21,7 +21,7 @@ futures = { version = "0.3.32", features = ["executor"] }
 googletest = "0.14.2"
 hyper = "1.9.0"
 jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
-log = { version = "0.4.29", features = ["std", "serde"] }
+log = { version = "0.4.30", features = ["std", "serde"] }
 parking_lot = "0.12.5"
 rand = "0.10.1"
 reqwest = { version = "0.13.3", default-features = false, features = [
