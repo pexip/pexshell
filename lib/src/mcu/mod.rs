@@ -179,17 +179,13 @@ impl<'auth> ApiClient<'auth> {
     fn get_base_uri_for_api(&self, api: Api) -> String {
         match api {
             Api::Command(command) => {
-                format!(
-                    "{}/api/admin/command/v1/{}",
-                    &self.base_address,
-                    &command.to_string(),
-                )
+                format!("{}/api/admin/command/v1/{}", self.base_address, command)
             }
             _ => {
                 format!(
                     "{}/api/admin/{}/v1",
-                    &self.base_address,
-                    &api.to_string().to_lowercase()
+                    self.base_address,
+                    api.to_string().to_lowercase()
                 )
             }
         }
@@ -206,7 +202,7 @@ impl<'auth> ApiClient<'auth> {
                 let uri = self.get_base_uri_for_api(api);
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
-                info!("GET {}", &uri);
+                info!("GET {uri}");
                 Ok(self
                     .http_client
                     .get(uri)
@@ -223,15 +219,9 @@ impl<'auth> ApiClient<'auth> {
                 offset,
             } => {
                 let uri = self.get_base_uri_for_api(api);
-                let uri = format!(
-                    "{}/{}/?limit={}&offset={}",
-                    &uri, &resource, &page_size, &offset
-                );
+                let uri = format!("{uri}/{resource}/?limit={page_size}&offset={offset}");
 
-                info!(
-                    "GET_ALL {}  (query parameters are excluded since they may be sensitive)",
-                    &uri
-                );
+                info!("GET_ALL {uri}  (query parameters are excluded since they may be sensitive)");
                 Ok(self
                     .http_client
                     .get(uri)
@@ -246,9 +236,9 @@ impl<'auth> ApiClient<'auth> {
                 args,
             } => {
                 let uri = self.get_base_uri_for_api(api);
-                let uri = format!("{}/{}/", &uri, &resource);
+                let uri = format!("{uri}/{resource}/");
 
-                info!("POST {}", &uri);
+                info!("POST {uri}");
                 Ok(self
                     .http_client
                     .post(uri)
@@ -266,7 +256,7 @@ impl<'auth> ApiClient<'auth> {
                 let uri = self.get_base_uri_for_api(api);
                 let uri = format!("{uri}/{resource}/{object_id}/");
 
-                info!("PATCH {}", &uri);
+                info!("PATCH {uri}");
                 Ok(self
                     .http_client
                     .patch(uri)
@@ -281,9 +271,9 @@ impl<'auth> ApiClient<'auth> {
                 object_id: resource_id,
             } => {
                 let uri = self.get_base_uri_for_api(api);
-                let uri = format!("{}/{}/{}/", &uri, &resource, &resource_id);
+                let uri = format!("{uri}/{resource}/{resource_id}/");
 
-                info!("DELETE {}", &uri);
+                info!("DELETE {uri}");
                 Ok(self
                     .http_client
                     .delete(uri)
@@ -293,7 +283,7 @@ impl<'auth> ApiClient<'auth> {
             }
             ApiRequest::ApiSchema { api } => {
                 let uri = self.get_base_uri_for_api(api) + "/";
-                debug!("API_SCHEMA {}", &uri);
+                debug!("API_SCHEMA {uri}");
                 Ok(self
                     .http_client
                     .get(uri)
@@ -304,7 +294,7 @@ impl<'auth> ApiClient<'auth> {
             ApiRequest::Schema { api, resource } => {
                 let uri = self.get_base_uri_for_api(api);
                 let uri = format!("{uri}/{resource}/schema/");
-                debug!("SCHEMA {}", &uri);
+                debug!("SCHEMA {uri}");
                 Ok(self
                     .http_client
                     .get(uri)
@@ -411,8 +401,7 @@ impl<'auth> ApiClient<'auth> {
                             Err(ApiClientError::ApiError(error::ApiError::new(
                                 Some(response_code),
                                 format!(
-                                    "failed to parse API response to JSON ({}):\n\n{}",
-                                    e, &response_text
+                                    "failed to parse API response to JSON ({e}):\n\n{response_text}"
                                 ),
                                 Some(e.into()),
                             )))?
@@ -529,8 +518,7 @@ impl IApiClient for ApiClient<'_> {
                                 return Err(error::ApiError::new(
                                     Some(response_code),
                                     format!(
-                                        "failed to parse API response to JSON ({}):\n\n{}",
-                                        e, &response_text
+                                        "failed to parse API response to JSON ({e}):\n\n{response_text}"
                                     ),
                                     Some(e.into()),
                                 )

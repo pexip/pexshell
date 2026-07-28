@@ -125,7 +125,7 @@ impl log::Log for SimpleLogger {
             let log = format!("{timestamp}  {level:<5}  {target} --- {args}");
             if let Some(ref mut f) = self.config.lock().log_file {
                 // We want to explode if logging fails, because otherwise it becomes impossible to debug issues
-                f.write_all(format!("{}\n", &log).as_bytes())
+                f.write_all(format!("{log}\n").as_bytes())
                     .expect("writing to log file failed");
             }
             if self.config.lock().log_to_stderr {

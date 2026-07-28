@@ -35,8 +35,8 @@ impl RootSchemaBuilder {
     #[must_use]
     pub fn entry(mut self, name: impl Into<String>) -> Self {
         let name = name.into();
-        let list_endpoint = format!("{}{}/", &self.api_path, &name);
-        let schema = format!("{}schema/", &list_endpoint);
+        let list_endpoint = format!("{}{}/", self.api_path, name);
+        let schema = format!("{list_endpoint}schema/");
         let entry = RootSchemaEntry {
             list_endpoint,
             schema,
