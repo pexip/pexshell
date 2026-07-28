@@ -26,12 +26,12 @@ fn read_config(
 ) -> anyhow::Result<ConfigManager> {
     debug!(
         "Ensuring config directory path is created: {:?}",
-        &dirs.config_dir
+        dirs.config_dir
     );
 
     let config_file_path = dirs.config_dir.join("config.toml");
     let config_lock_file_path = dirs.config_dir.join("config.lock");
-    debug!("Reading config from file: {:?}", &config_file_path);
+    debug!("Reading config from file: {config_file_path:?}");
 
     if !config_file_path.exists() {
         return Ok(ConfigManager::with_config(

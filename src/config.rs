@@ -377,7 +377,7 @@ impl Manager {
                 .map_err(|e| error::UserFriendly::new(format!("config is invalid: {e}")))
         }?;
 
-        debug!("Read the following config: {:?}", &config);
+        debug!("Read the following config: {config:?}");
 
         let env_user = Self::get_env_user(&env);
 
@@ -521,7 +521,7 @@ impl Provider for Manager {
                     || {
                         self.keyring
                             .lock()
-                            .retrieve(&user.address, &format!("{}-privkey", &credentials.client_id))
+                            .retrieve(&user.address, &format!("{}-privkey", credentials.client_id))
                             .map_err(|e| {
                                 error::UserFriendly::new(format!(
                                     "Private key is not configured and could not be retrieved from the system store: {e}"
@@ -533,7 +533,7 @@ impl Provider for Manager {
                 let token = credentials.token.clone().or_else(|| {
                     self.keyring
                         .lock()
-                        .retrieve(&user.address, &format!("{}-token", &credentials.client_id))
+                        .retrieve(&user.address, &format!("{}-token", credentials.client_id))
                         .ok()
                         .and_then(|s| serde_json::from_str::<OAuth2Token>(s.secret()).ok())
                 });
@@ -596,7 +596,7 @@ impl Provider for Manager {
                             .lock()
                             .save(
                                 &user.address,
-                                &format!("{}-token", &credentials.client_id),
+                                &format!("{}-token", credentials.client_id),
                                 &SensitiveString::from(serde_json::to_string(&token).unwrap()),
                             )
                             .map_err(|e| {
@@ -664,7 +664,7 @@ impl Configurer for Manager {
                         .lock()
                         .save(
                             &user.address,
-                            &format!("{}-privkey", &credentials.client_id),
+                            &format!("{}-privkey", credentials.client_id),
                             &credentials.private_key.take().unwrap(),
                         )
                         .map_err(|e| {
@@ -678,7 +678,7 @@ impl Configurer for Manager {
                             .lock()
                             .save(
                                 &user.address,
-                                &format!("{}-token", &credentials.client_id),
+                                &format!("{}-token", credentials.client_id),
                                 &SensitiveString::from(serde_json::to_string(token).unwrap()),
                             )
                             .map_err(|e| {
@@ -714,10 +714,7 @@ impl Configurer for Manager {
                 if credentials.private_key.is_none() {
                     self.keyring
                         .lock()
-                        .delete(
-                            &user.address,
-                            &format!("{}-privkey", &credentials.client_id),
-                        )
+                        .delete(&user.address, &format!("{}-privkey", credentials.client_id))
                         .map_err(|e| {
                             error::UserFriendly::new(format!(
                                 "could not delete private key from system credential store: {e}"
@@ -727,7 +724,7 @@ impl Configurer for Manager {
                 if credentials.token.is_none() {
                     self.keyring
                         .lock()
-                        .delete(&user.address, &format!("{}-token", &credentials.client_id))
+                        .delete(&user.address, &format!("{}-token", credentials.client_id))
                         .map_err(|e| {
                             error::UserFriendly::new(format!(
                                 "could not delete token from system credential store: {e}"

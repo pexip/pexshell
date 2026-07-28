@@ -65,7 +65,7 @@ impl Display for ApiError {
         match self.status {
             Some(s) => f.write_fmt(format_args!(
                 "api error with status {}: {}",
-                s, &self.message
+                s, self.message
             )),
             None => f.write_fmt(format_args!("api error: {}", self.message)),
         }
@@ -77,7 +77,7 @@ impl std::fmt::Debug for ApiError {
         match self.status {
             Some(status) => f.write_str(&format!(
                 "\n\tresponse code: {}\n\tmessage: {}",
-                status, &self.message
+                status, self.message
             )),
             None => f.write_str(&self.message),
         }

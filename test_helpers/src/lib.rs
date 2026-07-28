@@ -139,7 +139,7 @@ impl Drop for TestContext {
             CleanUpMode::NotOnPanic if std::thread::panicking() => {
                 warn!(
                     "Test appears to have failed due to panic - leaving behind test environment in {:?}.",
-                    &self.test_dir
+                    self.test_dir
                 );
             }
             CleanUpMode::Always | CleanUpMode::NotOnPanic => {
@@ -148,7 +148,7 @@ impl Drop for TestContext {
                 info!("Done!");
             }
             CleanUpMode::Never => {
-                warn!("Leaving behind test environment in {:?}.", &self.test_dir);
+                warn!("Leaving behind test environment in {:?}.", self.test_dir);
             }
         }
     }
