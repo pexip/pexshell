@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use googletest::prelude::*;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 #[allow(clippy::wildcard_imports)]
 use p256::pkcs8::*;
 use p256::{ecdsa, pkcs8::LineEnding};
@@ -140,7 +140,7 @@ pub struct OAuth2Credentials {
 
 impl OAuth2Credentials {
     pub fn new(client_id: impl Into<String>) -> Self {
-        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let client_key = ecdsa::SigningKey::generate();
         let server_key = ecdsa::VerifyingKey::from(&client_key);
         Self {
             client_id: client_id.into(),
@@ -155,7 +155,7 @@ impl OAuth2Credentials {
         client_secret: impl Into<String>,
         expiry: DateTime<Utc>,
     ) -> Self {
-        let client_key = ecdsa::SigningKey::random(&mut OsRng);
+        let client_key = ecdsa::SigningKey::generate();
         let server_key = ecdsa::VerifyingKey::from(&client_key);
         Self {
             client_id: client_id.into(),
