@@ -19,6 +19,7 @@ skip = [
     { name = "thiserror-impl", version = "1.0.69" }, # proc-macro pair for the retained thiserror 1.x line
     { name = "untrusted", version = "0.7.1" },       # old version used by aws-lc-rs, used by jsonwebtoken
     { name = "wit-bindgen", version = "0.51.0" },    # duplicated via mixed wasi support crates in transitive deps
+    { name = "syn", version = "2.0.117" },           # parser for rust source code. not all crates have moved to the newer version
 ]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [
