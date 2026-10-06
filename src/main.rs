@@ -212,9 +212,8 @@ async fn main() -> ExitCode {
         if *ABORT_ON_INTERRUPT.read() {
             error!("received signals: {signals:?} - aborting");
             std::process::exit(EXIT_CODE_INTERRUPTED);
-        } else {
-            error!("received signals: {signals:?}");
         }
+        error!("received signals: {signals:?}");
     });
 
     let args: Vec<String> = std::env::args().collect();
