@@ -4,43 +4,43 @@ members = ["lib", "test_helpers"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "BSD-3-Clause"
 
 [workspace.dependencies]
 anyhow = "1.0"
 async-stream = "0.3.6"
-async-trait = "0.1.89"
-chrono = { version = "0.4.44", features = [
+async-trait = "0.1.92"
+chrono = { version = "0.4.45", features = [
     "std",
     "clock",
     "serde",
 ], default-features = false } # for timestamps
-console = "0.16.3" # colour stderr logging
-futures = { version = "0.3.32", features = ["executor"] }
-googletest = "0.14.2"
-hyper = "1.10.1"
+console = "0.16.6" # colour stderr logging
+futures = { version = "0.3.34", features = ["executor"] }
+googletest = "0.14.3"
+hyper = "1.12.0"
 jsonwebtoken = { version = "11.1", features = ["aws_lc_rs"] }
-log = { version = "0.4.30", features = ["std", "serde"] }
+log = { version = "0.4.34", features = ["std", "serde"] }
 parking_lot = "0.12.5"
-rand = "0.10.1"
-reqwest = { version = "0.13.3", default-features = false, features = [
+rand = "0.10.3"
+reqwest = { version = "0.13.5", default-features = false, features = [
     "json",
     "form",
     "query",
 ] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.20"
-tokio = "1.52"
-toml = "1.1.2"
+serde_with = "3.24"
+tokio = "1.54"
+toml = "1.1.8"
 url = { version = "2.5", features = ["serde"] }
 
 # dev & test dependencies
-http = "1.4"
+http = "1.5"
 mockall = "0.15.0"
-test-case = "3.3"
-uuid = { version = "1.23", features = ["v4"] }
+test-case = "3.4"
+uuid = { version = "1.26", features = ["v4"] }
 wiremock = "0.6.5"
 
 [workspace.lints.clippy]
