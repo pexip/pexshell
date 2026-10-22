@@ -13,13 +13,9 @@ highlight = "all"
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
     { name = "cpufeatures", version = "0.2.17" },    # older line is still required by crypto deps outside rand 0.10
-    { name = "getrandom", version = "0.3.4" },       # old line still required by jobserver/cc and rand 0.9
-    { name = "r-efi", version = "5.3.0" },           # pulled in by getrandom 0.3 on wasi targets
-    { name = "thiserror", version = "1.0.69" },      # rustls-platform-verifier still brings in thiserror 1.x via jni
-    { name = "thiserror-impl", version = "1.0.69" }, # proc-macro pair for the retained thiserror 1.x line
     { name = "untrusted", version = "0.7.1" },       # old version used by aws-lc-rs, used by jsonwebtoken
-    { name = "wit-bindgen", version = "0.51.0" },    # duplicated via mixed wasi support crates in transitive deps
     { name = "syn", version = "2.0.117" },           # parser for rust source code. not all crates have moved to the newer version
+    { name = "base64", version = "0.22" },            # older version still used by jsonwebtoken and wiremock
 ]
 # Crate dependency trees that will be skipped when doing duplicate detection.
 skip-tree = [
